@@ -607,17 +607,20 @@ function makeRateChart(cvs, tt, dates, actual, fitted){
   return draw;
 }
 
-// ── mini feature chart factory ───────────────────────────────────────────
-const MPAD={t:14,r:12,b:32,l:44};
+// ── mini feature chart factory (dual y-axis: feature left, CPI/GDP right) ─
+const MPAD={t:14,r:48,b:32,l:44};
 
-function makeMiniChart(cvs, tt, dates, values, color){
+function makeMiniChart(cvs, tt, dates, values, color, refVals, refLabel){
+  const hasRef=refVals&&refVals.length>0;
   const xVals=dates.map(toDecY); const n=dates.length;
   const clean=values.filter(v=>v!=null);
   if(!clean.length) return ()=>{};
   const mn=Math.min(...clean), mx=Math.max(...clean);
   const span=mx-mn||1;
-  const yMin=mn-span*.08, yMax=mx+span*.1;
-  let stX,stY,stW;
+  const yMin=mn-span*.08, yMax=mx+span*.14;
+  let yMinR=0,yMaxR=1;
+  if(hasRef){const cr=refVals.filter(v=>v!=null);if(cr.length){const mnR=Math.min(...cr),mxR=Math.max(...cr),spR=mxR-mnR||1;yMinR=mnR-spR*.08;yMaxR=mxR+spR*.14;}}
+  let stX,stY,stYR,stW;
 
   function draw(){
     const W=cvs.parentElement.clientWidth;
@@ -629,17 +632,29 @@ function makeMiniChart(cvs, tt, dates, values, color){
     const C=getC();
     const toX=x=>MPAD.l+(x-xMin)/(xMax-xMin)*pw;
     const toY=y=>MPAD.t+(1-(y-yMin)/(yMax-yMin))*ph;
-    stX=toX; stY=toY; stW=W;
-    // y grid (4 ticks)
-    const rng=yMax-yMin; const step=rng/3;
+    const toYR=y=>MPAD.t+(1-(y-yMinR)/(yMaxR-yMinR))*ph;
+    stX=toX; stY=toY; stYR=toYR; stW=W;
+    // left y labels (feature color)
+    const step=(yMax-yMin)/3;
     for(let i=0;i<=3;i++){
       const yv=yMin+step*i; const cy=toY(yv);
-      ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.3; ctx.setLineDash([]);
+      ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.28; ctx.setLineDash([]);
       ctx.beginPath(); ctx.moveTo(MPAD.l,cy); ctx.lineTo(MPAD.l+pw,cy); ctx.stroke();
-      ctx.globalAlpha=1; ctx.fillStyle=C.muted;
+      ctx.globalAlpha=1; ctx.fillStyle=color;
       ctx.font='9px -apple-system,system-ui,sans-serif';
       ctx.textAlign='right'; ctx.textBaseline='middle';
       ctx.fillText(yv.toFixed(1),MPAD.l-3,cy);
+    }
+    // right y labels (amber = reference)
+    if(hasRef){
+      const stepR=(yMaxR-yMinR)/3;
+      for(let i=0;i<=3;i++){
+        const yv=yMinR+stepR*i; const cy=toYR(yv);
+        ctx.globalAlpha=1; ctx.fillStyle=C.amber;
+        ctx.font='9px -apple-system,system-ui,sans-serif';
+        ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText(yv.toFixed(1),MPAD.l+pw+3,cy);
+      }
     }
     // x ticks every 2yr
     ctx.textBaseline='top'; ctx.textAlign='center';
@@ -651,19 +666,36 @@ function makeMiniChart(cvs, tt, dates, values, color){
       ctx.font='9px -apple-system,system-ui,sans-serif';
       ctx.fillText(yr,cx,MPAD.t+ph+4);
     }
-    // axis
+    // axes
     ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.setLineDash([]); ctx.globalAlpha=1;
     ctx.beginPath(); ctx.moveTo(MPAD.l,MPAD.t); ctx.lineTo(MPAD.l,MPAD.t+ph); ctx.lineTo(MPAD.l+pw,MPAD.t+ph); ctx.stroke();
+    if(hasRef){
+      ctx.strokeStyle=C.amber; ctx.globalAlpha=.35;
+      ctx.beginPath(); ctx.moveTo(MPAD.l+pw,MPAD.t); ctx.lineTo(MPAD.l+pw,MPAD.t+ph); ctx.stroke();
+      ctx.globalAlpha=1;
+    }
     // zero line
     if(yMin<0&&yMax>0){
       const zy=toY(0);
-      ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.globalAlpha=.35;
+      ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.globalAlpha=.3;
       ctx.beginPath(); ctx.moveTo(MPAD.l,zy); ctx.lineTo(MPAD.l+pw,zy); ctx.stroke();
       ctx.setLineDash([]);
     }
-    // series line
-    ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=1.6;
-    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=.9; ctx.setLineDash([]);
+    // reference line (amber dashed, behind)
+    if(hasRef){
+      ctx.save(); ctx.strokeStyle=C.amber; ctx.lineWidth=1.6;
+      ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=.65; ctx.setLineDash([4,3]);
+      ctx.beginPath(); let onR=false;
+      for(let i=0;i<n;i++){
+        if(refVals[i]==null){onR=false;continue;}
+        const cx=toX(xVals[i]),cy=toYR(refVals[i]);
+        if(!onR){ctx.moveTo(cx,cy);onR=true;}else ctx.lineTo(cx,cy);
+      }
+      ctx.stroke(); ctx.restore();
+    }
+    // feature line (solid, front)
+    ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=2;
+    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=.92; ctx.setLineDash([]);
     ctx.beginPath(); let on=false;
     for(let i=0;i<n;i++){
       if(values[i]==null){on=false;continue;}
@@ -684,16 +716,24 @@ function makeMiniChart(cvs, tt, dates, values, color){
     const i=hit(mx);
     if(i<0){tt.classList.remove('on');draw();return;}
     tt.querySelector('.tt-d').textContent=dates[i];
-    tt.querySelectorAll('.tt-num')[0].textContent=values[i]!=null?values[i].toFixed(2):'—';
-    let tx=mx+10, ty=my-36;
-    if(tx+130>stW-8)tx=mx-130-10; if(ty<4)ty=4;
+    const nums=tt.querySelectorAll('.tt-num');
+    nums[0].textContent=values[i]!=null?values[i].toFixed(2)+'%':'—';
+    if(nums[1]&&hasRef) nums[1].textContent=refVals[i]!=null?refVals[i].toFixed(2)+'%':'—';
+    let tx=mx+10, ty=my-52;
+    if(tx+148>stW-8)tx=mx-148-10; if(ty<4)ty=4;
     tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
     draw();
-    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    const ctx=cvs.getContext('2d'); const C=getC(); ctx.scale(dpr,dpr);
     if(values[i]!=null){
-      ctx.save(); ctx.fillStyle=color; ctx.strokeStyle=getC().surface;
+      ctx.save(); ctx.fillStyle=color; ctx.strokeStyle=C.surface;
       ctx.lineWidth=2; ctx.setLineDash([]); ctx.beginPath();
       ctx.arc(stX(xVals[i]),stY(values[i]),4,0,Math.PI*2);
+      ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+    if(hasRef&&refVals[i]!=null){
+      ctx.save(); ctx.fillStyle=C.amber; ctx.strokeStyle=C.surface;
+      ctx.lineWidth=2; ctx.setLineDash([]); ctx.beginPath();
+      ctx.arc(stX(xVals[i]),stYR(refVals[i]),3.5,0,Math.PI*2);
       ctx.fill(); ctx.stroke(); ctx.restore();
     }
   });
@@ -701,27 +741,37 @@ function makeMiniChart(cvs, tt, dates, values, color){
   return draw;
 }
 
-function buildMiniGrid(containerId, meta, seriesData){
+function buildMiniGrid(containerId, meta, seriesData, refDates, refActual, refLabel){
   const container=document.getElementById(containerId);
+  const refMap={};
+  if(refDates&&refActual) refDates.forEach((d,i)=>{refMap[d]=refActual[i];});
   meta.forEach(f=>{
     const s=seriesData[f.key];
     if(!s||!s.dates.length) return;
     const clr=col(f.color);
     const uid=containerId+'-'+f.key.replace(/_/g,'-');
+    const refAligned=s.dates.map(d=>refMap[d]!=null?refMap[d]:null);
     const div=document.createElement('div');
     div.className='mini-card';
-    div.innerHTML=`<div class="mini-title">${f.name}</div>
+    div.innerHTML=`
+      <div class="mini-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span>${f.name}</span>
+        <span style="font-weight:400;font-size:9.5px;color:var(--muted)">
+          <span style="color:${clr}">—</span>&thinsp;특징&ensp;<span style="color:var(--amber)">- -</span>&thinsp;${refLabel}
+        </span>
+      </div>
       <div class="chart-wrap">
         <canvas id="cvs-${uid}"></canvas>
-        <div class="tt" id="tt-${uid}" style="min-width:110px">
+        <div class="tt" id="tt-${uid}" style="min-width:138px">
           <div class="tt-d">—</div>
-          <div class="tt-row"><span class="tt-lbl" style="color:${clr}">값</span><span class="tt-num">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:${clr}">${f.name}</span><span class="tt-num">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:var(--amber)">${refLabel}</span><span class="tt-num">—</span></div>
         </div>
       </div>`;
     container.appendChild(div);
     const cvs2=document.getElementById('cvs-'+uid);
     const tt2=document.getElementById('tt-'+uid);
-    const fn=makeMiniChart(cvs2,tt2,s.dates,s.values,clr);
+    const fn=makeMiniChart(cvs2,tt2,s.dates,s.values,clr,refAligned,refLabel);
     CHARTS['m-'+uid]=fn;
   });
 }
@@ -744,10 +794,10 @@ const CPI_MINI_META=[
 const GDP_MINI_META=[
   {key:'leading_index_yoy', name:'경기선행지수 YoY', color:'--violet'},
   {key:'export_amount_yoy', name:'수출금액 YoY',     color:'--emerald'},
-  {key:'ccsi',              name:'소비자심리 (CCSI)',color:'--amber'},
+  {key:'ccsi',              name:'소비자심리 (CCSI)',color:'--blue'},
 ];
-buildMiniGrid('cpi-mini-grid', CPI_MINI_META, D.feat_series_cpi);
-buildMiniGrid('gdp-mini-grid', GDP_MINI_META, D.feat_series_gdp);
+buildMiniGrid('cpi-mini-grid', CPI_MINI_META, D.feat_series_cpi, D.cpi.dates, D.cpi.actual, 'CPI');
+buildMiniGrid('gdp-mini-grid', GDP_MINI_META, D.feat_series_gdp, D.gdp.dates, D.gdp.actual, 'GDP');
 
 const ro = new ResizeObserver(()=>{ Object.values(CHARTS).forEach(fn=>fn&&fn()); });
 ro.observe(document.body);
