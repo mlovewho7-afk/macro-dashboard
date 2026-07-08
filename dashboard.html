@@ -296,16 +296,16 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
     <div class="card-hd">
       <span class="card-title">① 10Y-30Y / 20Y-30Y 커브 스프레드 추이 (2013~)</span>
       <div class="legend">
-        <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>10Y-30Y</div>
-        <div class="leg"><div class="leg-line" style="background:var(--violet)"></div>20Y-30Y</div>
+        <div class="leg"><div class="leg-line" style="background:#E15B5B"></div>10Y-30Y</div>
+        <div class="leg"><div class="leg-line" style="background:#4C8DF0"></div>20Y-30Y</div>
       </div>
     </div>
     <div class="chart-wrap">
       <canvas id="cvs-u1"></canvas>
       <div class="tt" id="tt-u1">
         <div class="tt-d" id="tt-u1-d">—</div>
-        <div class="tt-row"><span class="tt-lbl" style="color:var(--blue)">10Y-30Y</span><span class="tt-num" id="tt-u1-a">—</span></div>
-        <div class="tt-row"><span class="tt-lbl" style="color:var(--violet)">20Y-30Y</span><span class="tt-num" id="tt-u1-b">—</span></div>
+        <div class="tt-row"><span class="tt-lbl" style="color:#E15B5B">10Y-30Y</span><span class="tt-num" id="tt-u1-a">—</span></div>
+        <div class="tt-row"><span class="tt-lbl" style="color:#4C8DF0">20Y-30Y</span><span class="tt-num" id="tt-u1-b">—</span></div>
       </div>
     </div>
   </div>
@@ -1089,7 +1089,7 @@ function makeMultiLineChart(cvs, tt, dates, series, colorFns, opts={}){
 
 function makeIndexDualChart(cvs, tt, labels, barVals, lineVals){
   const n=labels.length;
-  const barAbs=Math.max(...barVals.map(v=>Math.abs(v||0)),1);
+  const barAbs=2000; // 스케일 고정 - 이보다 큰 값은 잘라서 숫자로 표기
   const lineClean=lineVals.filter(v=>v!=null);
   const lMin=Math.min(...lineClean), lMax=Math.max(...lineClean);
   const lPad=(lMax-lMin)*0.15||0.05;
@@ -1100,7 +1100,7 @@ function makeIndexDualChart(cvs, tt, labels, barVals, lineVals){
     const W=cvs.parentElement.clientWidth, H=Math.round(W*.62);
     cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
     const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
-    const pad={t:12,r:8,b:24,l:44};
+    const pad={t:22,r:8,b:24,l:44};
     const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
     const C=getC();
     const bw=pw/n;
@@ -1118,12 +1118,27 @@ function makeIndexDualChart(cvs, tt, labels, barVals, lineVals){
     ctx.fillText(Math.round(barAbs)+'억', pad.l-4, toYbar(barAbs));
     ctx.fillText(Math.round(-barAbs)+'억', pad.l-4, toYbar(-barAbs));
 
+    let clipCount=0;
     for(let i=0;i<n;i++){
       const v=barVals[i]; if(v==null) continue;
+      const vc=Math.max(-barAbs, Math.min(barAbs, v));
       const x0=toXc(i)-bw*0.32, w=bw*0.64;
-      const y1=toYbar(v);
+      const y1=toYbar(vc);
       ctx.fillStyle = v>=0?C.emerald:C.crimson;
       ctx.fillRect(x0, Math.min(y1,zy), w, Math.max(1,Math.abs(y1-zy)));
+      if(v!==vc){
+        const stagger = (clipCount++ % 2) ? 10 : 0;
+        ctx.save(); ctx.font='bold 8px -apple-system,system-ui,sans-serif'; ctx.textAlign='center';
+        if(v>0){
+          // 위로 넘친 값 - 상단 여백(패딩 영역, 배경 위)에 지그재그로 표기(인접 라벨 겹침 방지)
+          ctx.fillStyle=C.text; ctx.textBaseline='bottom';
+          ctx.fillText(Math.round(v).toLocaleString(), toXc(i), y1-3-stagger);
+        } else {
+          ctx.fillStyle='#fff'; ctx.textBaseline='bottom';
+          ctx.fillText(Math.round(v).toLocaleString(), toXc(i), y1-2-stagger);
+        }
+        ctx.restore();
+      }
     }
 
     ctx.save(); ctx.strokeStyle=C.blue; ctx.lineWidth=1.6; ctx.lineJoin='round'; ctx.setLineDash([]);
@@ -1220,6 +1235,98 @@ function makeCategoryBarChart(cvs, tt, labels, values, colorFn, refValues){
   return draw;
 }
 
+// 지표(26-2) 대비 비지표 스프레드: 종목별 최저~최고 범위 + 평균 눈금 + 현재값을
+// 스무스 커브로 이은 차트 (만기 짧은 순 → 긴 순 x축)
+function makeBenchmarkRangeChart(cvs, tt, bonds){
+  const n=bonds.length;
+  const allLo=Math.min(...bonds.map(b=>b.min)), allHi=Math.max(...bonds.map(b=>b.max));
+  const pad=(allHi-allLo)*0.12||1;
+  const yMin=allLo-pad, yMax=allHi+pad;
+  let state=null;
+
+  function draw(){
+    const W=cvs.parentElement.clientWidth, H=Math.round(W*.46);
+    cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    const pw=W-PAD.l-PAD.r, ph=H-PAD.t-PAD.b;
+    const C=getC();
+    const bw=pw/n;
+    const toX=i=>PAD.l+bw*(i+0.5);
+    const step=niceStep(yMax-yMin);
+    const toY=v=>PAD.t+(1-(v-yMin)/(yMax-yMin))*ph;
+    state={toX,toY,C,W,H,bw};
+
+    for(let yt=Math.ceil(yMin/step)*step; yt<=yMax; yt+=step){
+      const cy=toY(yt);
+      ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.35; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(PAD.l,cy); ctx.lineTo(PAD.l+pw,cy); ctx.stroke();
+      ctx.globalAlpha=1; ctx.fillStyle=C.muted; ctx.font='10px -apple-system,system-ui,sans-serif';
+      ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(yt.toFixed(0), PAD.l-5, cy);
+    }
+    if(yMin<0 && yMax>0){
+      const zy=toY(0);
+      ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.5; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(PAD.l,zy); ctx.lineTo(PAD.l+pw,zy); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha=1;
+    }
+    ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,PAD.t+ph); ctx.lineTo(PAD.l+pw,PAD.t+ph); ctx.stroke();
+
+    // 범위(최저~최고) + 평균 눈금
+    bonds.forEach((b,i)=>{
+      const cx=toX(i);
+      ctx.strokeStyle=C.muted; ctx.lineWidth=5; ctx.lineCap='round'; ctx.globalAlpha=.45; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(cx,toY(b.min)); ctx.lineTo(cx,toY(b.max)); ctx.stroke();
+      ctx.globalAlpha=1;
+      ctx.strokeStyle=C.text; ctx.lineWidth=2;
+      const my_=toY(b.mean);
+      ctx.beginPath(); ctx.moveTo(cx-7,my_); ctx.lineTo(cx+7,my_); ctx.stroke();
+    });
+
+    // 현재값들을 스무스 커브(Catmull-Rom → Bezier)로 연결
+    const pts = bonds.map((b,i)=>({x:toX(i), y:toY(b.current)}));
+    ctx.save(); ctx.strokeStyle=C.muted; ctx.lineWidth=1.4; ctx.globalAlpha=.6; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
+    for(let i=0;i<pts.length-1;i++){
+      const p0=pts[i>0?i-1:0], p1=pts[i], p2=pts[i+1], p3=pts[i+2<pts.length?i+2:pts.length-1];
+      const cp1x=p1.x+(p2.x-p0.x)/6, cp1y=p1.y+(p2.y-p0.y)/6;
+      const cp2x=p2.x-(p3.x-p1.x)/6, cp2y=p2.y-(p3.y-p1.y)/6;
+      ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,p2.x,p2.y);
+    }
+    ctx.stroke(); ctx.restore();
+
+    // 현재값 점 (평균대비 저평가=파랑/고평가=빨강)
+    bonds.forEach((b,i)=>{
+      const cx=toX(i), cy=toY(b.current);
+      ctx.save(); ctx.fillStyle = b.current>=b.mean ? C.blue : C.crimson;
+      ctx.strokeStyle=C.surface; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(cx,cy,4.5,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+    });
+
+    ctx.fillStyle=C.muted; ctx.font='10px -apple-system,system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
+    bonds.forEach((b,i)=>{ ctx.fillText(b.name, toX(i), PAD.t+ph+7); });
+  }
+
+  function hit(mx){ const i=Math.floor((mx-PAD.l)/state.bw); return (i>=0&&i<n)?i:-1; }
+  cvs.addEventListener('mousemove', e=>{
+    if(!state) return;
+    const rect=cvs.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const i=hit(mx);
+    if(i<0){tt.classList.remove('on'); draw(); return;}
+    const b=bonds[i];
+    tt.querySelector('.tt-d').textContent=b.name+' (만기 '+b.maturity+')';
+    const nums=tt.querySelectorAll('.tt-num');
+    nums[0].textContent = b.current.toFixed(2)+'bp';
+    nums[1].textContent = b.mean.toFixed(2)+'bp (범위 '+b.min.toFixed(1)+'~'+b.max.toFixed(1)+')';
+    let tx=mx+14, ty=my-40; if(tx+180>state.W-8) tx=mx-180-14; if(ty<4) ty=4;
+    tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
+    draw();
+  });
+  cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on'); draw();});
+  return draw;
+}
+
 function makeBidRateChart(cvs, tt, auctionIdx, auctionDates, bidRatio, meanRatio, levelDates, level30y){
   const n=levelDates.length;
   const rMin=Math.min(...bidRatio), rMax=Math.max(...bidRatio);
@@ -1275,6 +1382,14 @@ function makeBidRateChart(cvs, tt, auctionIdx, auctionDates, bidRatio, meanRatio
     for(let i=0;i<n;i++){
       const cx=toX(i), cy=toYl(level30y[i]);
       if(i===0){ctx.moveTo(cx,cy);} else ctx.lineTo(cx,cy);
+    }
+    ctx.stroke(); ctx.restore();
+
+    ctx.save(); ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.5; ctx.lineJoin='round'; ctx.setLineDash([]);
+    ctx.beginPath();
+    for(let k=0;k<auctionIdx.length;k++){
+      const cx=toX(auctionIdx[k]), cy=toYr(bidRatio[k]);
+      if(k===0){ctx.moveTo(cx,cy);} else ctx.lineTo(cx,cy);
     }
     ctx.stroke(); ctx.restore();
 
@@ -1341,8 +1456,11 @@ ro.observe(document.body);
 
 // ── 초장기 전략: 데이터 fetch 후 차트 생성 ────────────────────────────────
 fetch('data/ultra_data.json').then(r=>r.json()).then(DU=>{
+  const u1cut = DU.curve.dates.findIndex(d=>d>='2026-01-01');
+  const u1dates = DU.curve.dates.slice(u1cut);
   CHARTS.u1 = makeMultiLineChart(document.getElementById('cvs-u1'), document.getElementById('tt-u1'),
-    DU.curve.dates, [DU.curve.s1030, DU.curve.s2030], [C=>C.blue, C=>C.violet], {tickMode:'year'});
+    u1dates, [DU.curve.s1030.slice(u1cut), DU.curve.s2030.slice(u1cut)],
+    [C=>'#E15B5B', C=>'#4C8DF0'], {tickMode:'sparse'});
   CHARTS.u1();
 
   CHARTS.u2a = makeIndexDualChart(document.getElementById('cvs-u2a'), document.getElementById('tt-u2a'),
@@ -1353,10 +1471,7 @@ fetch('data/ultra_data.json').then(r=>r.json()).then(DU=>{
   CHARTS.u2b();
 
   const bonds = DU.benchmark.bonds;
-  CHARTS.u3 = makeCategoryBarChart(document.getElementById('cvs-u3'), document.getElementById('tt-u3'),
-    bonds.map(b=>b.name), bonds.map(b=>b.current),
-    (v,i,C)=> v>=bonds[i].mean ? C.blue : C.crimson,
-    bonds.map(b=>b.mean));
+  CHARTS.u3 = makeBenchmarkRangeChart(document.getElementById('cvs-u3'), document.getElementById('tt-u3'), bonds);
   CHARTS.u3();
 
   CHARTS.u4 = makeMultiLineChart(document.getElementById('cvs-u4'), document.getElementById('tt-u4'),
