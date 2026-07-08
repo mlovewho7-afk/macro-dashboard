@@ -289,37 +289,130 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
 <!-- ── 초장기 전략 섹션 (정적 이미지 · 수동 갱신) ── -->
 <div class="section" id="sec-ultra">
   <p style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:16px">
-    20~30Y 초장기 국채 커브·수급·지표스프레드·계절성 분석 — 파이썬 분석 스크립트 결과를 스냅샷으로 반영(정적 이미지, 수동 갱신)
+    20~30Y 초장기 국채 커브·수급·지표스프레드·계절성 분석 — data/ultra_data.json을 불러와 그리는 라이브 차트(수동 export, 자동 렌더)
   </p>
 
   <div class="card">
-    <div class="card-hd"><span class="card-title">① 10Y-30Y / 20Y-30Y 커브 스프레드 추이 (2013~)</span></div>
-    <img src="images/ultra-long/chart1_curve_spread.png" style="width:100%;border-radius:6px">
+    <div class="card-hd">
+      <span class="card-title">① 10Y-30Y / 20Y-30Y 커브 스프레드 추이 (2013~)</span>
+      <div class="legend">
+        <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>10Y-30Y</div>
+        <div class="leg"><div class="leg-line" style="background:var(--violet)"></div>20Y-30Y</div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="cvs-u1"></canvas>
+      <div class="tt" id="tt-u1">
+        <div class="tt-d" id="tt-u1-d">—</div>
+        <div class="tt-row"><span class="tt-lbl" style="color:var(--blue)">10Y-30Y</span><span class="tt-num" id="tt-u1-a">—</span></div>
+        <div class="tt-row"><span class="tt-lbl" style="color:var(--violet)">20Y-30Y</span><span class="tt-num" id="tt-u1-b">—</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-hd"><span class="card-title">② 보험사·외국인 잔존만기 15Y+ 순매수 + 10Y-30Y 스프레드 (최근 1개월)</span></div>
-    <img src="images/ultra-long/chart2_flow_recent_month.png" style="width:100%;border-radius:6px">
+    <div class="card-hd">
+      <span class="card-title">② 보험사·외국인 잔존만기 15Y+ 순매수 + 10Y-30Y 스프레드 (최근 1개월)</span>
+      <div class="legend">
+        <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>순매수(+)</div>
+        <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>순매도(-)</div>
+        <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>10Y-30Y(우축)</div>
+      </div>
+    </div>
+    <div class="mini-grid">
+      <div class="mini-card">
+        <div class="mini-title">보험사 순매수</div>
+        <div class="chart-wrap">
+          <canvas id="cvs-u2a"></canvas>
+          <div class="tt" id="tt-u2a">
+            <div class="tt-d" id="tt-u2a-d">—</div>
+            <div class="tt-row"><span class="tt-lbl">순매수</span><span class="tt-num" id="tt-u2a-a">—</span></div>
+            <div class="tt-row"><span class="tt-lbl" style="color:var(--blue)">스프레드</span><span class="tt-num" id="tt-u2a-b">—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-title">외국인 순매수</div>
+        <div class="chart-wrap">
+          <canvas id="cvs-u2b"></canvas>
+          <div class="tt" id="tt-u2b">
+            <div class="tt-d" id="tt-u2b-d">—</div>
+            <div class="tt-row"><span class="tt-lbl">순매수</span><span class="tt-num" id="tt-u2b-a">—</span></div>
+            <div class="tt-row"><span class="tt-lbl" style="color:var(--blue)">스프레드</span><span class="tt-num" id="tt-u2b-b">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-hd"><span class="card-title">③ 지표(26-2) 대비 비지표 스프레드 커브 (최근 1개월)</span></div>
-    <img src="images/ultra-long/chart3_benchmark_spread_month.png" style="width:100%;border-radius:6px">
+    <div class="card-hd">
+      <span class="card-title">③ 지표(26-2) 대비 비지표 스프레드 (최근 1개월 평균 대비 현재값)</span>
+      <div class="legend">
+        <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>평균대비 저평가</div>
+        <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>평균대비 고평가</div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="cvs-u3"></canvas>
+      <div class="tt" id="tt-u3">
+        <div class="tt-d" id="tt-u3-d">—</div>
+        <div class="tt-row"><span class="tt-lbl">현재 스프레드</span><span class="tt-num" id="tt-u3-a">—</span></div>
+        <div class="tt-row"><span class="tt-lbl">최근 1개월 평균</span><span class="tt-num" id="tt-u3-b">—</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-hd"><span class="card-title">④ 한국 vs 미국·일본·영국 10Y-30Y 커브 동향 (연초 대비)</span></div>
-    <img src="images/ultra-long/chart4a_global_curve_spread_ytd.png" style="width:100%;border-radius:6px">
+    <div class="card-hd">
+      <span class="card-title">④ 한국 vs 미국·일본·영국 10Y-30Y 커브 동향 (연초 대비)</span>
+      <div class="legend">
+        <div class="leg"><div class="leg-line" style="background:var(--amber)"></div>KR</div>
+        <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>US</div>
+        <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>JP</div>
+        <div class="leg"><div class="leg-line" style="background:var(--violet)"></div>UK</div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="cvs-u4"></canvas>
+      <div class="tt" id="tt-u4">
+        <div class="tt-d" id="tt-u4-d">—</div>
+        <div class="tt-row"><span class="tt-lbl" style="color:var(--amber)">KR</span><span class="tt-num" id="tt-u4-a">—</span></div>
+        <div class="tt-row"><span class="tt-lbl" style="color:var(--blue)">US</span><span class="tt-num" id="tt-u4-b">—</span></div>
+        <div class="tt-row"><span class="tt-lbl" style="color:var(--emerald)">JP</span><span class="tt-num" id="tt-u4-c">—</span></div>
+        <div class="tt-row"><span class="tt-lbl" style="color:var(--violet)">UK</span><span class="tt-num" id="tt-u4-d2">—</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-hd"><span class="card-title">⑤ 30Y 국채입찰 응찰율 vs 30Y 절대금리 (2020~, 상/하반기 구분)</span></div>
-    <img src="images/ultra-long/chart5_bid_ratio_30y.png" style="width:100%;border-radius:6px">
+    <div class="card-hd">
+      <span class="card-title">⑤ 30Y 국채입찰 응찰율 vs 30Y 절대금리 (2020~)</span>
+      <div class="legend">
+        <div class="leg"><div class="leg-dia" style="background:var(--blue)"></div>응찰율(평균 이상)</div>
+        <div class="leg"><div class="leg-dia" style="background:var(--crimson)"></div>응찰율(평균 미만)</div>
+        <div class="leg"><div class="leg-line" style="background:var(--violet)"></div>30Y금리(우축)</div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="cvs-u5"></canvas>
+      <div class="tt" id="tt-u5">
+        <div class="tt-d" id="tt-u5-d">—</div>
+        <div class="tt-row"><span class="tt-lbl">응찰율</span><span class="tt-num" id="tt-u5-a">—</span></div>
+        <div class="tt-row"><span class="tt-lbl" style="color:var(--violet)">30Y금리</span><span class="tt-num" id="tt-u5-b">—</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
     <div class="card-hd"><span class="card-title">⑥ 보험사 지표 순매수 계절성 (2020~ 월별 평균)</span></div>
-    <img src="images/ultra-long/chart8_insurance_netbuy_seasonality.png" style="width:100%;border-radius:6px">
+    <div class="chart-wrap">
+      <canvas id="cvs-u6"></canvas>
+      <div class="tt" id="tt-u6">
+        <div class="tt-d" id="tt-u6-d">—</div>
+        <div class="tt-row"><span class="tt-lbl">평균 순매수</span><span class="tt-num" id="tt-u6-a">—</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="sec-title" style="margin-top:20px">주간 전략</div>
@@ -887,6 +980,339 @@ function buildMiniGrid(containerId, meta, seriesData, refDates, refActual, refLa
   });
 }
 
+// ── 초장기 전략: 범용 차트 함수 (data/ultra_data.json 기반) ──────────────
+function niceStep(range){
+  const rough = range/5 || 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough/mag;
+  let step; if(norm<1.5) step=1; else if(norm<3) step=2; else if(norm<7) step=5; else step=10;
+  return step*mag;
+}
+
+function makeMultiLineChart(cvs, tt, dates, series, colorFns, opts={}){
+  const n = dates.length;
+  const allV = series.flat().filter(v=>v!=null);
+  const vMax=Math.max(...allV), vMin=Math.min(...allV);
+  const vPad=(vMax-vMin)*0.12 || 0.05;
+  const yMax=vMax+vPad, yMin=vMin-vPad;
+  let state=null;
+
+  function draw(){
+    const W=cvs.parentElement.clientWidth, H=Math.round(W*.4);
+    cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    const pw=W-PAD.l-PAD.r, ph=H-PAD.t-PAD.b;
+    const C=getC();
+    const toX=i=>PAD.l+(i/(n-1))*pw;
+    const toY=v=>PAD.t+(1-(v-yMin)/(yMax-yMin))*ph;
+    state={toX,toY,C,W,H};
+
+    const step=niceStep(yMax-yMin);
+    for(let yt=Math.ceil(yMin/step)*step; yt<=yMax; yt+=step){
+      const cy=toY(yt);
+      ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(PAD.l,cy); ctx.lineTo(PAD.l+pw,cy); ctx.stroke();
+      ctx.globalAlpha=1; ctx.fillStyle=C.muted; ctx.font='11px -apple-system,system-ui,sans-serif';
+      ctx.textAlign='right'; ctx.textBaseline='middle';
+      ctx.fillText(yt.toFixed(2), PAD.l-5, cy);
+    }
+
+    ctx.textBaseline='top'; ctx.textAlign='center'; ctx.fillStyle=C.muted;
+    ctx.font='11px -apple-system,system-ui,sans-serif';
+    if(opts.tickMode==='year'){
+      let lastYr=null;
+      for(let i=0;i<n;i++){
+        const yr=dates[i].slice(0,4);
+        if(yr!==lastYr && i>0){
+          const cx=toX(i);
+          ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.25; ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(cx,PAD.t); ctx.lineTo(cx,PAD.t+ph); ctx.stroke();
+          ctx.globalAlpha=1; ctx.fillText(yr, cx, PAD.t+ph+7);
+        }
+        lastYr=yr;
+      }
+    } else {
+      const tstep=Math.max(1,Math.round(n/8));
+      for(let i=0;i<n;i+=tstep){
+        const cx=toX(i);
+        ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.2; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(cx,PAD.t); ctx.lineTo(cx,PAD.t+ph); ctx.stroke();
+        ctx.globalAlpha=1; ctx.fillText(dates[i].slice(5), cx, PAD.t+ph+7);
+      }
+    }
+    ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,PAD.t+ph); ctx.lineTo(PAD.l+pw,PAD.t+ph); ctx.stroke();
+
+    if(yMin<0 && yMax>0){
+      ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.5; ctx.setLineDash([4,4]);
+      const zy=toY(0); ctx.beginPath(); ctx.moveTo(PAD.l,zy); ctx.lineTo(PAD.l+pw,zy); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha=1;
+    }
+
+    series.forEach((s,idx)=>{
+      ctx.save(); ctx.strokeStyle=colorFns[idx](C); ctx.lineWidth=1.6;
+      ctx.lineJoin='round'; ctx.lineCap='round'; ctx.setLineDash([]);
+      ctx.beginPath(); let on=false;
+      for(let i=0;i<n;i++){
+        if(s[i]==null){on=false;continue;}
+        const cx=toX(i), cy=toY(s[i]);
+        if(!on){ctx.moveTo(cx,cy);on=true;} else ctx.lineTo(cx,cy);
+      }
+      ctx.stroke(); ctx.restore();
+    });
+  }
+
+  function hit(mx){ const i=Math.round((mx-PAD.l)/(state.W-PAD.l-PAD.r)*(n-1)); return (i>=0&&i<n)?i:-1; }
+  cvs.addEventListener('mousemove', e=>{
+    if(!state) return;
+    const rect=cvs.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const i=hit(mx);
+    if(i<0){tt.classList.remove('on'); draw(); return;}
+    tt.querySelector('.tt-d').textContent=dates[i];
+    const nums=tt.querySelectorAll('.tt-num');
+    series.forEach((s,idx)=>{ if(nums[idx]) nums[idx].textContent = s[i]!=null? s[i].toFixed(3)+'%p' : '—'; });
+    let tx=mx+14, ty=my-40; if(tx+160>state.W-8) tx=mx-160-14; if(ty<4) ty=4;
+    tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
+    draw();
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    series.forEach((s,idx)=>{
+      if(s[i]==null) return;
+      const cx=state.toX(i), cy=state.toY(s[i]);
+      ctx.save(); ctx.fillStyle=colorFns[idx](state.C); ctx.strokeStyle=state.C.surface; ctx.lineWidth=2; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+    });
+  });
+  cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on'); draw();});
+  return draw;
+}
+
+function makeIndexDualChart(cvs, tt, labels, barVals, lineVals){
+  const n=labels.length;
+  const barAbs=Math.max(...barVals.map(v=>Math.abs(v||0)),1);
+  const lineClean=lineVals.filter(v=>v!=null);
+  const lMin=Math.min(...lineClean), lMax=Math.max(...lineClean);
+  const lPad=(lMax-lMin)*0.15||0.05;
+  const yLMin=lMin-lPad, yLMax=lMax+lPad;
+  let state=null;
+
+  function draw(){
+    const W=cvs.parentElement.clientWidth, H=Math.round(W*.62);
+    cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    const pad={t:12,r:8,b:24,l:44};
+    const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+    const C=getC();
+    const bw=pw/n;
+    const toXc=i=>pad.l+bw*(i+0.5);
+    const toYbar=v=>pad.t+(1-(v-(-barAbs))/(barAbs-(-barAbs)))*ph;
+    const toYline=v=>pad.t+(1-(v-yLMin)/(yLMax-yLMin))*ph;
+    state={toXc,toYbar,toYline,C,W,H,bw};
+
+    const zy=toYbar(0);
+    ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(pad.l,zy); ctx.lineTo(pad.l+pw,zy); ctx.stroke();
+
+    ctx.fillStyle=C.muted; ctx.font='9px -apple-system,system-ui,sans-serif';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(Math.round(barAbs)+'억', pad.l-4, toYbar(barAbs));
+    ctx.fillText(Math.round(-barAbs)+'억', pad.l-4, toYbar(-barAbs));
+
+    for(let i=0;i<n;i++){
+      const v=barVals[i]; if(v==null) continue;
+      const x0=toXc(i)-bw*0.32, w=bw*0.64;
+      const y1=toYbar(v);
+      ctx.fillStyle = v>=0?C.emerald:C.crimson;
+      ctx.fillRect(x0, Math.min(y1,zy), w, Math.max(1,Math.abs(y1-zy)));
+    }
+
+    ctx.save(); ctx.strokeStyle=C.blue; ctx.lineWidth=1.6; ctx.lineJoin='round'; ctx.setLineDash([]);
+    ctx.beginPath(); let on=false;
+    for(let i=0;i<n;i++){
+      if(lineVals[i]==null){on=false;continue;}
+      const cx=toXc(i), cy=toYline(lineVals[i]);
+      if(!on){ctx.moveTo(cx,cy);on=true;} else ctx.lineTo(cx,cy);
+    }
+    ctx.stroke(); ctx.restore();
+
+    ctx.fillStyle=C.muted; ctx.font='9px -apple-system,system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
+    const tstep=Math.max(1,Math.round(n/6));
+    for(let i=0;i<n;i+=tstep){ ctx.fillText(labels[i], toXc(i), pad.t+ph+5); }
+  }
+
+  function hit(mx){ const i=Math.floor((mx-44)/state.bw); return (i>=0&&i<n)?i:-1; }
+  cvs.addEventListener('mousemove', e=>{
+    if(!state) return;
+    const rect=cvs.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const i=hit(mx);
+    if(i<0){tt.classList.remove('on'); draw(); return;}
+    tt.querySelector('.tt-d').textContent=labels[i];
+    const nums=tt.querySelectorAll('.tt-num');
+    nums[0].textContent = barVals[i]!=null? Math.round(barVals[i]).toLocaleString()+'억' : '—';
+    if(nums[1]) nums[1].textContent = lineVals[i]!=null? lineVals[i].toFixed(3)+'%p' : '—';
+    let tx=mx+14, ty=my-40; if(tx+150>state.W-8) tx=mx-150-14; if(ty<4) ty=4;
+    tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
+    draw();
+  });
+  cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on'); draw();});
+  return draw;
+}
+
+function makeCategoryBarChart(cvs, tt, labels, values, colorFn, refValues){
+  const n=labels.length;
+  const vMax=Math.max(...values,0), vMin=Math.min(...values,0);
+  const pad=(vMax-vMin)*0.15||1;
+  const yMax=vMax+pad, yMin=vMin-pad;
+  let state=null;
+
+  function draw(){
+    const W=cvs.parentElement.clientWidth, H=Math.round(W*.42);
+    cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    const pw=W-PAD.l-PAD.r, ph=H-PAD.t-PAD.b;
+    const C=getC();
+    const bw=pw/n;
+    const toX=i=>PAD.l+bw*(i+0.5);
+    const step=niceStep(yMax-yMin);
+    const toY=v=>PAD.t+(1-(v-yMin)/(yMax-yMin))*ph;
+    state={toX,toY,C,W,H,bw};
+
+    for(let yt=Math.ceil(yMin/step)*step; yt<=yMax; yt+=step){
+      const cy=toY(yt);
+      ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.35; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(PAD.l,cy); ctx.lineTo(PAD.l+pw,cy); ctx.stroke();
+      ctx.globalAlpha=1; ctx.fillStyle=C.muted; ctx.font='10px -apple-system,system-ui,sans-serif';
+      ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(yt.toFixed(0), PAD.l-5, cy);
+    }
+    const zy=toY(0);
+    ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,zy); ctx.lineTo(PAD.l+pw,zy); ctx.stroke();
+
+    for(let i=0;i<n;i++){
+      const v=values[i];
+      const x0=toX(i)-bw*0.32, w=bw*0.64;
+      const y1=toY(v);
+      ctx.fillStyle=colorFn(v,i,C);
+      ctx.fillRect(x0, Math.min(y1,zy), w, Math.max(1,Math.abs(y1-zy)));
+    }
+
+    ctx.fillStyle=C.muted; ctx.font='10px -apple-system,system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
+    for(let i=0;i<n;i++){ ctx.fillText(labels[i], toX(i), PAD.t+ph+7); }
+  }
+
+  function hit(mx){ const i=Math.floor((mx-PAD.l)/state.bw); return (i>=0&&i<n)?i:-1; }
+  cvs.addEventListener('mousemove', e=>{
+    if(!state) return;
+    const rect=cvs.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const i=hit(mx);
+    if(i<0){tt.classList.remove('on'); draw(); return;}
+    tt.querySelector('.tt-d').textContent=labels[i];
+    const nums=tt.querySelectorAll('.tt-num');
+    nums[0].textContent = values[i].toLocaleString(undefined,{maximumFractionDigits:1});
+    if(nums[1]) nums[1].textContent = refValues? refValues[i].toFixed(1) : '—';
+    let tx=mx+14, ty=my-40; if(tx+150>state.W-8) tx=mx-150-14; if(ty<4) ty=4;
+    tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
+    draw();
+  });
+  cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on'); draw();});
+  return draw;
+}
+
+function makeBidRateChart(cvs, tt, auctionIdx, auctionDates, bidRatio, meanRatio, levelDates, level30y){
+  const n=levelDates.length;
+  const rMin=Math.min(...bidRatio), rMax=Math.max(...bidRatio);
+  const rPad=(rMax-rMin)*0.08;
+  const yRMin=rMin-rPad, yRMax=rMax+rPad;
+  const lMin=Math.min(...level30y), lMax=Math.max(...level30y);
+  const lPad=(lMax-lMin)*0.08;
+  const yLMin=lMin-lPad, yLMax=lMax+lPad;
+  let state=null;
+
+  function draw(){
+    const W=cvs.parentElement.clientWidth, H=Math.round(W*.42);
+    cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    const pad={t:14,r:46,b:26,l:40};
+    const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+    const C=getC();
+    const toX=i=>pad.l+(i/(n-1))*pw;
+    const toYr=v=>pad.t+(1-(v-yRMin)/(yRMax-yRMin))*ph;
+    const toYl=v=>pad.t+(1-(v-yLMin)/(yLMax-yLMin))*ph;
+    state={toX,toYr,toYl,C,W,H};
+
+    const stepR=niceStep(yRMax-yRMin);
+    for(let yt=Math.ceil(yRMin/stepR)*stepR; yt<=yRMax; yt+=stepR){
+      const cy=toYr(yt);
+      ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.3; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(pad.l,cy); ctx.lineTo(pad.l+pw,cy); ctx.stroke();
+      ctx.globalAlpha=1; ctx.fillStyle=C.muted; ctx.font='10px -apple-system,system-ui,sans-serif';
+      ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(yt.toFixed(0), pad.l-5, cy);
+    }
+    ctx.textBaseline='top'; ctx.textAlign='center';
+    let lastYr=null;
+    for(let i=0;i<n;i++){
+      const yr=levelDates[i].slice(0,4);
+      if(yr!==lastYr && i>0){
+        const cx=toX(i);
+        ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.2; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(cx,pad.t); ctx.lineTo(cx,pad.t+ph); ctx.stroke();
+        ctx.globalAlpha=1; ctx.fillStyle=C.muted; ctx.fillText(yr, cx, pad.t+ph+6);
+      }
+      lastYr=yr;
+    }
+    ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+ph); ctx.lineTo(pad.l+pw,pad.t+ph); ctx.stroke();
+
+    const my_=toYr(meanRatio);
+    ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.6; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(pad.l,my_); ctx.lineTo(pad.l+pw,my_); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+
+    ctx.save(); ctx.strokeStyle=C.violet; ctx.lineWidth=1.5; ctx.lineJoin='round'; ctx.setLineDash([]);
+    ctx.beginPath();
+    for(let i=0;i<n;i++){
+      const cx=toX(i), cy=toYl(level30y[i]);
+      if(i===0){ctx.moveTo(cx,cy);} else ctx.lineTo(cx,cy);
+    }
+    ctx.stroke(); ctx.restore();
+
+    for(let k=0;k<auctionIdx.length;k++){
+      const cx=toX(auctionIdx[k]), cy=toYr(bidRatio[k]);
+      ctx.fillStyle = bidRatio[k]>=meanRatio ? C.blue : C.crimson;
+      ctx.beginPath(); ctx.arc(cx,cy,2.6,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function hit(mx){
+    let bi=-1,bd=Infinity;
+    for(let k=0;k<auctionIdx.length;k++){ const d=Math.abs(state.toX(auctionIdx[k])-mx); if(d<bd){bd=d;bi=k;} }
+    return bd<18?bi:-1;
+  }
+  cvs.addEventListener('mousemove', e=>{
+    if(!state) return;
+    const rect=cvs.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const k=hit(mx);
+    if(k<0){tt.classList.remove('on'); draw(); return;}
+    const li=auctionIdx[k];
+    tt.querySelector('.tt-d').textContent=auctionDates[k];
+    const nums=tt.querySelectorAll('.tt-num');
+    nums[0].textContent = bidRatio[k].toFixed(1)+'%';
+    nums[1].textContent = level30y[li].toFixed(2)+'%';
+    let tx=mx+14, ty=my-40; if(tx+150>state.W-8) tx=mx-150-14; if(ty<4) ty=4;
+    tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
+    draw();
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    const cx=state.toX(li), cy=state.toYr(bidRatio[k]);
+    ctx.save(); ctx.fillStyle= bidRatio[k]>=meanRatio?state.C.blue:state.C.crimson; ctx.strokeStyle=state.C.surface; ctx.lineWidth=2; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+  });
+  cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on'); draw();});
+  return draw;
+}
+
 // ── init charts ──────────────────────────────────────────────────────────
 const CHARTS = {};
 CHARTS.cpi  = makeChart(document.getElementById('cvs-cpi'),  document.getElementById('tt-cpi'),
@@ -912,4 +1338,43 @@ buildMiniGrid('gdp-mini-grid', GDP_MINI_META, D.feat_series_gdp, D.gdp.dates, D.
 
 const ro = new ResizeObserver(()=>{ Object.values(CHARTS).forEach(fn=>fn&&fn()); });
 ro.observe(document.body);
+
+// ── 초장기 전략: 데이터 fetch 후 차트 생성 ────────────────────────────────
+fetch('data/ultra_data.json').then(r=>r.json()).then(DU=>{
+  CHARTS.u1 = makeMultiLineChart(document.getElementById('cvs-u1'), document.getElementById('tt-u1'),
+    DU.curve.dates, [DU.curve.s1030, DU.curve.s2030], [C=>C.blue, C=>C.violet], {tickMode:'year'});
+  CHARTS.u1();
+
+  CHARTS.u2a = makeIndexDualChart(document.getElementById('cvs-u2a'), document.getElementById('tt-u2a'),
+    DU.flow.dates, DU.flow.insurance, DU.flow.spread);
+  CHARTS.u2a();
+  CHARTS.u2b = makeIndexDualChart(document.getElementById('cvs-u2b'), document.getElementById('tt-u2b'),
+    DU.flow.dates, DU.flow.foreign, DU.flow.spread);
+  CHARTS.u2b();
+
+  const bonds = DU.benchmark.bonds;
+  CHARTS.u3 = makeCategoryBarChart(document.getElementById('cvs-u3'), document.getElementById('tt-u3'),
+    bonds.map(b=>b.name), bonds.map(b=>b.current),
+    (v,i,C)=> v>=bonds[i].mean ? C.blue : C.crimson,
+    bonds.map(b=>b.mean));
+  CHARTS.u3();
+
+  CHARTS.u4 = makeMultiLineChart(document.getElementById('cvs-u4'), document.getElementById('tt-u4'),
+    DU.global.dates, [DU.global.kr, DU.global.us, DU.global.jp, DU.global.uk],
+    [C=>C.amber, C=>C.blue, C=>C.emerald, C=>C.violet], {tickMode:'sparse'});
+  CHARTS.u4();
+
+  CHARTS.u5 = makeBidRateChart(document.getElementById('cvs-u5'), document.getElementById('tt-u5'),
+    DU.bidratio.auctionIdx, DU.bidratio.auctionDates, DU.bidratio.bidRatio, DU.bidratio.meanRatio,
+    DU.bidratio.levelDates, DU.bidratio.level30y);
+  CHARTS.u5();
+
+  const monthLabels=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  CHARTS.u6 = makeCategoryBarChart(document.getElementById('cvs-u6'), document.getElementById('tt-u6'),
+    monthLabels, DU.seasonality.avgByMonth,
+    (v,i,C)=> i<6 ? C.blue : C.muted, null);
+  CHARTS.u6();
+}).catch(err=>{
+  console.error('초장기 전략 데이터 로드 실패:', err);
+});
 </script>
