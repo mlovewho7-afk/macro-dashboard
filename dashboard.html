@@ -292,6 +292,46 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
     20~30Y 초장기 국채 커브·수급·지표스프레드·계절성 분석 — data/ultra_data.json을 불러와 그리는 라이브 차트(수동 export, 자동 렌더)
   </p>
 
+  <div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+    <div class="tile">
+      <div class="t-label">현재 전략</div>
+      <!-- 수기 입력: 아래 텍스트를 직접 수정 -->
+      <div class="t-val c-muted">중립 (Neutral)</div>
+      <div class="t-sub">애널리스트 판단 · 수기 입력</div>
+    </div>
+    <div class="tile">
+      <div class="t-label">주간 10Y-30Y 변동</div>
+      <div class="t-val" id="u-weekly-chg">—</div>
+      <div class="t-sub" id="u-weekly-chg-sub">전주 대비</div>
+    </div>
+    <div class="tile">
+      <div class="t-label">전술적 전략</div>
+      <!-- 수기 입력: 아래 텍스트를 직접 수정 -->
+      <div class="t-val c-muted">스팁 (Steep)</div>
+      <div class="t-sub">애널리스트 판단 · 수기 입력</div>
+    </div>
+  </div>
+
+  <div class="sec-title" style="margin-top:4px">주간 전략</div>
+  <div class="tbl-card" style="padding:16px 20px;font-size:13px;line-height:1.8;color:var(--text);margin-bottom:18px">
+    <p><b>커브:</b> 국내 10Y-30Y 커브는 연초 역전(-0.15%p)에서 최근 +0.2%p대까지 뚜렷하게 스티프닝 중이다.
+    같은 기간 미국·일본·영국 커브는 박스권을 유지해 이번 스티프닝은 국내 고유 요인으로 판단된다.</p>
+    <p><b>수급:</b> 6월 말 외국인의 이례적 대량 순매수(1일 13,454억) 직후 커브 확대가 관찰됐고, 보험사는
+    분석 기간 내내 순매도 없이 꾸준한 매수를 이어갔다. 다만 최근 며칠은 외국인이 순매도 우위로 전환된
+    조짐이 있어 방향 전환 여부를 주시할 필요가 있다.</p>
+    <p><b>상대가치:</b> 지표(26-2) 대비 비지표 스프레드는 21~22년물 구간(21-2·22-2·22-9)에서 가장
+    크게 벌어져 있다(+5~6bp, 최근 1개월 평균 대비 저평가). 지표에 가까운 최근물(25-2·25-7)은 스프레드가
+    0bp 근처로 수렴해 상대가치 매력이 낮다.</p>
+    <p><b>수요:</b> 30Y 경쟁입찰 응찰율은 2020년 이후 평균(264%)을 크게 밑도는 178~220%대로 역대
+    최저 수준이다. 마침 7월 진입으로 하반기 발행 물량이 계절적으로 줄어드는 국면(상반기 대비 평균
+    40% 감소)에 들어섰지만, 이는 수요 회복이 아니라 공급 감소에 따른 기계적 완화이므로 응찰율이
+    반등하더라도 곧바로 "수요 개선"으로 해석하지 않도록 주의한다.</p>
+    <p><b>결론:</b> 절대금리 방향성 베팅보다는 (1) 상대적으로 저평가된 21~22년물 구간의 비지표 매수
+    관점 우위, (2) 국내 고유 스티프닝 모멘텀을 감안한 커브 포지션 유지, (3) 하반기 응찰율 개선을
+    액면 그대로 받아들이지 말고 실질 수요(외국인 순매수 지속 여부) 확인 후 판단하는 3가지를 이번 주
+    운용 방향으로 제안한다.</p>
+  </div>
+
   <div class="card">
     <div class="card-hd">
       <span class="card-title">① 10Y-30Y / 20Y-30Y 커브 스프레드 추이 (2013~)</span>
@@ -413,26 +453,6 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
         <div class="tt-row"><span class="tt-lbl">평균 순매수</span><span class="tt-num" id="tt-u6-a">—</span></div>
       </div>
     </div>
-  </div>
-
-  <div class="sec-title" style="margin-top:20px">주간 전략</div>
-  <div class="tbl-card" style="padding:16px 20px;font-size:13px;line-height:1.8;color:var(--text)">
-    <p><b>커브:</b> 국내 10Y-30Y 커브는 연초 역전(-0.15%p)에서 최근 +0.2%p대까지 뚜렷하게 스티프닝 중이다.
-    같은 기간 미국·일본·영국 커브는 박스권을 유지해 이번 스티프닝은 국내 고유 요인으로 판단된다.</p>
-    <p><b>수급:</b> 6월 말 외국인의 이례적 대량 순매수(1일 13,454억) 직후 커브 확대가 관찰됐고, 보험사는
-    분석 기간 내내 순매도 없이 꾸준한 매수를 이어갔다. 다만 최근 며칠은 외국인이 순매도 우위로 전환된
-    조짐이 있어 방향 전환 여부를 주시할 필요가 있다.</p>
-    <p><b>상대가치:</b> 지표(26-2) 대비 비지표 스프레드는 21~22년물 구간(21-2·22-2·22-9)에서 가장
-    크게 벌어져 있다(+5~6bp, 최근 1개월 평균 대비 저평가). 지표에 가까운 최근물(25-2·25-7)은 스프레드가
-    0bp 근처로 수렴해 상대가치 매력이 낮다.</p>
-    <p><b>수요:</b> 30Y 경쟁입찰 응찰율은 2020년 이후 평균(264%)을 크게 밑도는 178~220%대로 역대
-    최저 수준이다. 마침 7월 진입으로 하반기 발행 물량이 계절적으로 줄어드는 국면(상반기 대비 평균
-    40% 감소)에 들어섰지만, 이는 수요 회복이 아니라 공급 감소에 따른 기계적 완화이므로 응찰율이
-    반등하더라도 곧바로 "수요 개선"으로 해석하지 않도록 주의한다.</p>
-    <p><b>결론:</b> 절대금리 방향성 베팅보다는 (1) 상대적으로 저평가된 21~22년물 구간의 비지표 매수
-    관점 우위, (2) 국내 고유 스티프닝 모멘텀을 감안한 커브 포지션 유지, (3) 하반기 응찰율 개선을
-    액면 그대로 받아들이지 말고 실질 수요(외국인 순매수 지속 여부) 확인 후 판단하는 3가지를 이번 주
-    운용 방향으로 제안한다.</p>
   </div>
 </div>
 
@@ -1110,13 +1130,16 @@ function makeIndexDualChart(cvs, tt, labels, barVals, lineVals){
     state={toXc,toYbar,toYline,C,W,H,bw};
 
     const zy=toYbar(0);
-    ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=1; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(pad.l,zy); ctx.lineTo(pad.l+pw,zy); ctx.stroke();
-
-    ctx.fillStyle=C.muted; ctx.font='9px -apple-system,system-ui,sans-serif';
+    const gridStep=500;
+    ctx.font='9px -apple-system,system-ui,sans-serif';
     ctx.textAlign='right'; ctx.textBaseline='middle';
-    ctx.fillText(Math.round(barAbs)+'억', pad.l-4, toYbar(barAbs));
-    ctx.fillText(Math.round(-barAbs)+'억', pad.l-4, toYbar(-barAbs));
+    for(let gv=-barAbs; gv<=barAbs; gv+=gridStep){
+      const gy=toYbar(gv);
+      ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha = gv===0?1:.3; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(pad.l,gy); ctx.lineTo(pad.l+pw,gy); ctx.stroke();
+      ctx.globalAlpha=1; ctx.fillStyle=C.muted;
+      ctx.fillText(Math.round(gv).toLocaleString()+'억', pad.l-4, gy);
+    }
 
     let clipCount=0;
     for(let i=0;i<n;i++){
@@ -1462,6 +1485,17 @@ fetch('data/ultra_data.json').then(r=>r.json()).then(DU=>{
     u1dates, [DU.curve.s1030.slice(u1cut), DU.curve.s2030.slice(u1cut)],
     [C=>'#E15B5B', C=>'#4C8DF0'], {tickMode:'sparse'});
   CHARTS.u1();
+
+  // 상단 타일: 주간 10Y-30Y 변동(전주 대비, 영업일 5일 전 대비)
+  const s1030 = DU.curve.s1030;
+  const wLast = s1030[s1030.length-1], wPrev = s1030[s1030.length-6];
+  const wChg = wLast - wPrev;
+  const wEl = document.getElementById('u-weekly-chg');
+  const C0 = getC();
+  wEl.textContent = (wChg>=0?'+':'') + wChg.toFixed(3) + '%p';
+  wEl.style.color = wChg>=0 ? C0.emerald : C0.crimson;
+  document.getElementById('u-weekly-chg-sub').textContent =
+    `전주 대비 (${DU.curve.dates[DU.curve.dates.length-6]} → ${DU.curve.dates[DU.curve.dates.length-1]})`;
 
   CHARTS.u2a = makeIndexDualChart(document.getElementById('cvs-u2a'), document.getElementById('tt-u2a'),
     DU.flow.dates, DU.flow.insurance, DU.flow.spread);
