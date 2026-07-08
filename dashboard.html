@@ -142,7 +142,7 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
 </div>
 <script>
 (function(){
-  var GATE_HASH = '922a6a7177b365fa003bf10942d4485c852c12b6415cd6af659cc612c34096da';
+  var GATE_HASH = 'aab749994a5ca7fe04e65cb895f46b121d9ecddf298ffbcaaff5e86dbe233ea3';
   async function sha256(text){
     var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
     return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
