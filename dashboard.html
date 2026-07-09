@@ -297,18 +297,15 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
       <div class="t-label">현재 전략</div>
       <!-- 수기 입력: 아래 텍스트를 직접 수정 -->
       <div class="t-val c-muted">중립 (Neutral)</div>
-      <div class="t-sub">애널리스트 판단 · 수기 입력</div>
     </div>
     <div class="tile">
       <div class="t-label">주간 10Y-30Y 변동</div>
       <div class="t-val" id="u-weekly-chg">—</div>
-      <div class="t-sub" id="u-weekly-chg-sub">전주 대비</div>
     </div>
     <div class="tile">
       <div class="t-label">전술적 전략</div>
       <!-- 수기 입력: 아래 텍스트를 직접 수정 -->
       <div class="t-val c-muted">스팁 (Steep)</div>
-      <div class="t-sub">애널리스트 판단 · 수기 입력</div>
     </div>
   </div>
 
@@ -1494,8 +1491,6 @@ fetch('data/ultra_data.json').then(r=>r.json()).then(DU=>{
   const C0 = getC();
   wEl.textContent = (wChg>=0?'+':'') + wChg.toFixed(3) + '%p';
   wEl.style.color = wChg>=0 ? C0.emerald : C0.crimson;
-  document.getElementById('u-weekly-chg-sub').textContent =
-    `전주 대비 (${DU.curve.dates[DU.curve.dates.length-6]} → ${DU.curve.dates[DU.curve.dates.length-1]})`;
 
   CHARTS.u2a = makeIndexDualChart(document.getElementById('cvs-u2a'), document.getElementById('tt-u2a'),
     DU.flow.dates, DU.flow.insurance, DU.flow.spread);
