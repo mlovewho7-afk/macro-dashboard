@@ -216,6 +216,7 @@ canvas{display:block;width:100%;cursor:crosshair}
       <div class="legend">
         <div class="leg"><div class="leg-line" style="background:var(--amber);height:2.5px"></div>실제 KGB3Y</div>
         <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>모델 (Taylor+TS)</div>
+        <div class="leg"><div class="leg-dia" style="background:var(--emerald)"></div>예측 1M</div>
       </div>
     </div>
     <div class="chart-wrap">
@@ -539,10 +540,13 @@ function makeChart(cvs, tt, dates, actual, fitted, opts={}){
 }
 
 // ── Rate chart (Taylor vs actual KGB3Y) ─────────────────────────────────
-function makeRateChart(cvs, tt, dates, actual, fitted){
+function makeRateChart(cvs, tt, dates, actual, fitted, fc){
   const xVals=dates.map(toDecY); const n=dates.length;
+  const fcStr=fc!=null?nextM(dates[n-1]):null;
+  const fcDecY=fcStr?toDecY(fcStr):null;
   const resid=actual.map((a,i)=>a!=null&&fitted[i]!=null?+((a-fitted[i]).toFixed(2)):null);
   const allV=[...actual.filter(v=>v!=null),...fitted.filter(v=>v!=null)];
+  if(fc!=null) allV.push(fc);
   const yMin=Math.floor(Math.min(...allV))-.3, yMax=Math.ceil(Math.max(...allV))+.5;
   let state=null;
 
@@ -551,7 +555,7 @@ function makeRateChart(cvs, tt, dates, actual, fitted){
     cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
     const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
     const pw=W-PAD.l-PAD.r, ph=H-PAD.t-PAD.b;
-    const xMin=xVals[0]-.2, xMax=xVals[n-1]+.5;
+    const xMin=xVals[0]-.2, xMax=(fcDecY||xVals[n-1])+.6;
     const C=getC();
     const toX=x=>PAD.l+(x-xMin)/(xMax-xMin)*pw;
     const toY=y=>PAD.t+(1-(y-yMin)/(yMax-yMin))*ph;
@@ -581,6 +585,22 @@ function makeRateChart(cvs, tt, dates, actual, fitted){
     }
     line(xVals,fitted,C.blue,1.4,.78);
     line(xVals,actual,C.amber,2.4,.95);
+    // forecast diamond
+    if(fcDecY!=null&&fc!=null){
+      const lmx=toX(xVals[n-1]),lmy=toY(fitted[n-1]);
+      const fcx=toX(fcDecY),fcy=toY(fc);
+      ctx.save(); ctx.strokeStyle=C.emerald; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.globalAlpha=.7;
+      ctx.beginPath(); ctx.moveTo(lmx,lmy); ctx.lineTo(fcx,fcy); ctx.stroke(); ctx.restore();
+      const ds=6;
+      ctx.save(); ctx.fillStyle=C.emerald; ctx.strokeStyle=C.surface; ctx.lineWidth=2; ctx.setLineDash([]); ctx.globalAlpha=1;
+      ctx.beginPath();
+      ctx.moveTo(fcx,fcy-ds); ctx.lineTo(fcx+ds,fcy); ctx.lineTo(fcx,fcy+ds); ctx.lineTo(fcx-ds,fcy); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.font='bold 10.5px -apple-system,system-ui,sans-serif';
+      ctx.fillStyle=C.emerald; ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillText(fc.toFixed(2)+'%',fcx+9,fcy);
+      ctx.restore();
+    }
   }
 
   function hit(mx){ let bi=-1,bd=Infinity; for(let i=0;i<n;i++){const d=Math.abs(state.toX(xVals[i])-mx);if(d<bd){bd=d;bi=i;}} return bd<30?bi:-1; }
@@ -783,7 +803,7 @@ CHARTS.cpi  = makeChart(document.getElementById('cvs-cpi'),  document.getElement
 CHARTS.gdp  = makeChart(document.getElementById('cvs-gdp'),  document.getElementById('tt-gdp'),
   D.gdp.dates, D.gdp.actual, D.gdp.fitted, {fc:D.gdp.fc});
 CHARTS.rate = makeRateChart(document.getElementById('cvs-rate'), document.getElementById('tt-rate'),
-  D.taylor.dates, D.taylor.hist_actual, D.taylor.hist_fitted);
+  D.taylor.dates, D.taylor.hist_actual, D.taylor.hist_fitted, D.taylor.kgb3y);
 
 const CPI_MINI_META=[
   {key:'service_ppi_yoy',             name:'서비스 PPI YoY',       color:'--violet'},
