@@ -128,8 +128,8 @@ canvas{display:block;width:100%;cursor:crosshair}
   <button class="nav-btn on" data-sec="cpi">CPI 물가모델</button>
   <button class="nav-btn"   data-sec="gdp">GDP 성장모델</button>
   <button class="nav-btn"   data-sec="rate">금리모델 (Taylor)</button>
+  <button class="nav-btn"   data-sec="ultra">초장기 전략</button>
   <button class="nav-btn"   data-sec="cal">경제 캘린더</button>
-  <button class="nav-btn"   data-sec="ultra">초장기물</button>
 </div>
 
 <!-- ── CPI 섹션 ── -->
@@ -234,15 +234,7 @@ canvas{display:block;width:100%;cursor:crosshair}
   <div class="decomp" id="decomp"></div>
 </div>
 
-<!-- ── 캘린더 섹션 ── -->
-<div class="section" id="sec-cal">
-  <div class="sec-title" style="margin-top:4px">D-30 이내 모델 영향 이벤트</div>
-  <div class="tbl-card"><table><thead><tr>
-    <th>날짜</th><th>D-day</th><th>지표</th><th>기간</th>
-  </tr></thead><tbody id="cal-body"></tbody></table></div>
-</div>
-
-<!-- ── 초장기물 섹션 ── -->
+<!-- ── 초장기 전략 섹션 ── -->
 <div class="section" id="sec-ultra">
   <div id="ultra-loading" style="padding:48px;text-align:center;color:var(--muted);font-size:14px">초장기물 데이터 불러오는 중…</div>
   <div id="ultra-content" style="display:none">
@@ -406,6 +398,14 @@ canvas{display:block;width:100%;cursor:crosshair}
       </div>
     </div>
   </div>
+</div>
+
+<!-- ── 캘린더 섹션 ── -->
+<div class="section" id="sec-cal">
+  <div class="sec-title" style="margin-top:4px">D-30 이내 모델 영향 이벤트</div>
+  <div class="tbl-card"><table><thead><tr>
+    <th>날짜</th><th>D-day</th><th>지표</th><th>기간</th>
+  </tr></thead><tbody id="cal-body"></tbody></table></div>
 </div>
 
 <div class="footer">
