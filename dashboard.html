@@ -129,6 +129,7 @@ canvas{display:block;width:100%;cursor:crosshair}
   <button class="nav-btn"   data-sec="gdp">GDP 성장모델</button>
   <button class="nav-btn"   data-sec="rate">금리모델 (Taylor)</button>
   <button class="nav-btn"   data-sec="cal">경제 캘린더</button>
+  <button class="nav-btn"   data-sec="ultra">초장기물</button>
 </div>
 
 <!-- ── CPI 섹션 ── -->
@@ -241,6 +242,57 @@ canvas{display:block;width:100%;cursor:crosshair}
   </tr></thead><tbody id="cal-body"></tbody></table></div>
 </div>
 
+<!-- ── 초장기물 섹션 ── -->
+<div class="section" id="sec-ultra">
+  <div id="ultra-loading" style="padding:48px;text-align:center;color:var(--muted);font-size:14px">초장기물 데이터 불러오는 중…</div>
+  <div id="ultra-content" style="display:none">
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">커브 스프레드 (bp) — 10-30Y · 20-30Y</span>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>10-30Y</div>
+          <div class="leg"><div class="leg-line" style="background:var(--violet)"></div>20-30Y</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="cvs-ucurve"></canvas>
+        <div class="tt" id="tt-ucurve">
+          <div class="tt-d">—</div>
+          <div class="tt-row"><span class="tt-lbl" style="color:var(--blue)">10-30Y</span><span class="tt-num">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:var(--violet)">20-30Y</span><span class="tt-num">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">글로벌 커브 스프레드 10-30Y (bp, YTD)</span>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>한국</div>
+          <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>미국</div>
+          <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>일본</div>
+          <div class="leg"><div class="leg-line" style="background:var(--amber)"></div>영국</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="cvs-uglobal"></canvas>
+        <div class="tt" id="tt-uglobal">
+          <div class="tt-d">—</div>
+          <div class="tt-row"><span class="tt-lbl" style="color:var(--blue)">한국</span><span class="tt-num">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:var(--crimson)">미국</span><span class="tt-num">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:var(--emerald)">일본</span><span class="tt-num">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:var(--amber)">영국</span><span class="tt-num">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sec-title">지표채권 대비 스프레드 (최근 30일, bp)</div>
+    <div class="tbl-card"><table><thead><tr>
+      <th>종목</th><th style="text-align:right">만기</th>
+      <th style="text-align:right">현재</th><th style="text-align:right">평균</th>
+      <th style="text-align:right">최소</th><th style="text-align:right">최대</th>
+    </tr></thead><tbody id="ultra-bench-body"></tbody></table></div>
+  </div>
+</div>
+
 <div class="footer">
   데이터: 통계청(CPI/GDP) · 한국은행(PPI·기대인플레이션·채권금리) · 오피넷(휘발유)<br>
   모델: OLS 다중회귀 (CPI·GDP) + Taylor Rule (기준금리→KGB3Y) · 파이프라인 실행 시 자동 갱신
@@ -287,6 +339,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.section').forEach(s=>s.classList.remove('on'));
     btn.classList.add('on');
     document.getElementById('sec-'+btn.dataset.sec).classList.add('on');
+    if(btn.dataset.sec==='ultra') loadUltra();
     setTimeout(()=>{ Object.values(CHARTS).forEach(fn=>fn&&fn()); }, 50);
   });
 });
@@ -794,6 +847,136 @@ function buildMiniGrid(containerId, meta, seriesData, refDates, refActual, refLa
     const fn=makeMiniChart(cvs2,tt2,s.dates,s.values,clr,refAligned,refLabel);
     CHARTS['m-'+uid]=fn;
   });
+}
+
+// ── multi-line chart factory (N series, bp scale) ───────────────────────
+function makeMultiChart(cvs, tt, dates, series){
+  const xVals=dates.map(d=>{const p=d.split('-').map(Number);return p[0]+(p[1]-.5)/12;});
+  const n=dates.length;
+  const allV=series.flatMap(s=>s.data.filter(v=>v!=null));
+  if(!allV.length)return ()=>{};
+  const mn=Math.min(...allV),mx=Math.max(...allV),sp=mx-mn||1;
+  const yMin=mn-sp*.08,yMax=mx+sp*.12;
+  let stX,stY,stW;
+
+  function draw(){
+    const W=cvs.parentElement.clientWidth,H=Math.round(W*.44);
+    cvs.width=W*dpr;cvs.height=H*dpr;cvs.style.height=H+'px';
+    const ctx=cvs.getContext('2d');ctx.scale(dpr,dpr);
+    const pw=W-PAD.l-PAD.r,ph=H-PAD.t-PAD.b;
+    const xMin=xVals[0]-.15,xMax=xVals[n-1]+.25;
+    const C=getC();
+    const toX=x=>PAD.l+(x-xMin)/(xMax-xMin)*pw;
+    const toY=y=>PAD.t+(1-(y-yMin)/(yMax-yMin))*ph;
+    stX=toX;stY=toY;stW=W;
+    const nTick=5,step=(yMax-yMin)/nTick;
+    for(let i=0;i<=nTick;i++){
+      const yv=yMin+step*i,cy=toY(yv);
+      ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.globalAlpha=.3;ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(PAD.l,cy);ctx.lineTo(PAD.l+pw,cy);ctx.stroke();
+      ctx.globalAlpha=1;ctx.fillStyle=C.muted;
+      ctx.font='11px -apple-system,system-ui,sans-serif';
+      ctx.textAlign='right';ctx.textBaseline='middle';
+      ctx.fillText(yv.toFixed(2)+'bp',PAD.l-5,cy);
+    }
+    if(yMin<0&&yMax>0){
+      const zy=toY(0);
+      ctx.strokeStyle=C.muted;ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.globalAlpha=.35;
+      ctx.beginPath();ctx.moveTo(PAD.l,zy);ctx.lineTo(PAD.l+pw,zy);ctx.stroke();ctx.setLineDash([]);
+    }
+    ctx.textBaseline='top';ctx.textAlign='center';
+    for(let yr=Math.ceil(xVals[0]);yr<=Math.floor(xMax);yr++){
+      const cx=toX(yr);
+      ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.globalAlpha=.2;ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(cx,PAD.t);ctx.lineTo(cx,PAD.t+ph);ctx.stroke();
+      ctx.globalAlpha=1;ctx.fillStyle=C.muted;ctx.fillText(yr,cx,PAD.t+ph+7);
+    }
+    ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.setLineDash([]);ctx.globalAlpha=1;
+    ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,PAD.t+ph);ctx.lineTo(PAD.l+pw,PAD.t+ph);ctx.stroke();
+    series.forEach(s=>{
+      ctx.save();ctx.strokeStyle=s.color;ctx.lineWidth=1.8;
+      ctx.lineJoin='round';ctx.lineCap='round';ctx.globalAlpha=.88;ctx.setLineDash([]);
+      ctx.beginPath();let on=false;
+      for(let i=0;i<n;i++){
+        if(s.data[i]==null){on=false;continue;}
+        const cx=toX(xVals[i]),cy=toY(s.data[i]);
+        if(!on){ctx.moveTo(cx,cy);on=true;}else ctx.lineTo(cx,cy);
+      }
+      ctx.stroke();ctx.restore();
+    });
+  }
+
+  function hit(mx){let bi=-1,bd=Infinity;for(let i=0;i<n;i++){const d=Math.abs(stX(xVals[i])-mx);if(d<bd){bd=d;bi=i;}}return bd<30?bi:-1;}
+
+  cvs.addEventListener('mousemove',e=>{
+    if(!stX)return;
+    const rect=cvs.getBoundingClientRect();
+    const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    const i=hit(mx);if(i<0){tt.classList.remove('on');draw();return;}
+    tt.querySelector('.tt-d').textContent=dates[i];
+    const nums=tt.querySelectorAll('.tt-num');
+    series.forEach((s,j)=>{if(nums[j])nums[j].textContent=s.data[i]!=null?s.data[i].toFixed(4)+'bp':'—';});
+    let tx=mx+14,ty=my-54;
+    if(tx+168>stW-8)tx=mx-168-14;if(ty<4)ty=4;
+    tt.style.left=tx+'px';tt.style.top=ty+'px';tt.classList.add('on');
+    draw();
+    const ctx=cvs.getContext('2d');ctx.scale(dpr,dpr);
+    series.forEach(s=>{
+      if(s.data[i]==null)return;
+      ctx.save();ctx.fillStyle=s.color;ctx.strokeStyle=getC().surface;
+      ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();
+      ctx.arc(stX(xVals[i]),stY(s.data[i]),4,0,Math.PI*2);
+      ctx.fill();ctx.stroke();ctx.restore();
+    });
+  });
+  cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on');draw();});
+  return draw;
+}
+
+// ── ultra tab loader (fetch ./data/ultra_data.json) ──────────────────────
+let ultraLoaded=false;
+function loadUltra(){
+  if(ultraLoaded)return;
+  fetch('./data/ultra_data.json')
+    .then(r=>r.json())
+    .then(U=>{
+      ultraLoaded=true;
+      document.getElementById('ultra-loading').style.display='none';
+      document.getElementById('ultra-content').style.display='';
+      CHARTS['ultra-curve']=makeMultiChart(
+        document.getElementById('cvs-ucurve'),
+        document.getElementById('tt-ucurve'),
+        U.curve.dates,[
+          {data:U.curve.s1030,color:col('--blue')},
+          {data:U.curve.s2030,color:col('--violet')},
+        ]);
+      CHARTS['ultra-global']=makeMultiChart(
+        document.getElementById('cvs-uglobal'),
+        document.getElementById('tt-uglobal'),
+        U.global.dates,[
+          {data:U.global.kr,color:col('--blue')},
+          {data:U.global.us,color:col('--crimson')},
+          {data:U.global.jp,color:col('--emerald')},
+          {data:U.global.uk,color:col('--amber')},
+        ]);
+      const tbody=document.getElementById('ultra-bench-body');
+      tbody.innerHTML='';
+      U.benchmark.bonds.forEach(b=>{
+        const diff=b.current-b.mean;
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td><strong>${b.name}</strong></td>
+          <td class="td-num">${b.maturity}</td>
+          <td class="td-num ${diff>0?'c-emerald':'c-crimson'}">${b.current>=0?'+':''}${b.current.toFixed(1)}</td>
+          <td class="td-num">${b.mean.toFixed(1)}</td>
+          <td class="td-num c-muted">${b.min.toFixed(1)}</td>
+          <td class="td-num c-muted">${b.max.toFixed(1)}</td>`;
+        tbody.appendChild(tr);
+      });
+      setTimeout(()=>{CHARTS['ultra-curve']&&CHARTS['ultra-curve']();CHARTS['ultra-global']&&CHARTS['ultra-global']();},50);
+    })
+    .catch(()=>{
+      document.getElementById('ultra-loading').textContent='데이터 없음 — export_ultra_dashboard_data.py 실행 후 push 필요';
+    });
 }
 
 // ── init charts ──────────────────────────────────────────────────────────
