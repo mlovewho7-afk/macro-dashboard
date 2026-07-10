@@ -465,14 +465,14 @@ function activateTab(sec){
 }
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    localStorage.setItem(TAB_KEY, btn.dataset.sec);
+    try{ localStorage.setItem(TAB_KEY, btn.dataset.sec); }catch(e){}
     activateTab(btn.dataset.sec);
   });
 });
-{
+try{
   const saved = localStorage.getItem(TAB_KEY);
   if(saved && saved!=='cpi') activateTab(saved);
-}
+}catch(e){}
 
 // ── tile helper ──────────────────────────────────────────────────────────
 function setTile(idVal, idSub, val, sub, cls){
