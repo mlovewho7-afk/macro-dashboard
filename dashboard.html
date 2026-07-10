@@ -469,10 +469,8 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     activateTab(btn.dataset.sec);
   });
 });
-try{
-  const saved = localStorage.getItem(TAB_KEY);
-  if(saved && saved!=='cpi') activateTab(saved);
-}catch(e){}
+// 탭 복원 호출은 스크립트 맨 끝(모든 함수·변수 정의 이후)에서 실행한다 — loadUltra 등이
+// 아직 정의되기 전에 호출되면 TDZ(let 선언 전 접근) 에러로 조용히 실패하기 때문.
 
 // ── tile helper ──────────────────────────────────────────────────────────
 function setTile(idVal, idSub, val, sub, cls){
@@ -1520,4 +1518,10 @@ buildMiniGrid('gdp-aux-mini-grid', GDP_AUX_META, D.feat_series_gdp_aux, D.gdp.da
 
 const ro = new ResizeObserver(()=>{ Object.values(CHARTS).forEach(fn=>fn&&fn()); });
 ro.observe(document.body);
+
+// ── 새로고침 시 마지막 탭 복원 (모든 정의가 끝난 뒤 마지막에 실행) ──────────
+try{
+  const savedTab = localStorage.getItem(TAB_KEY);
+  if(savedTab && savedTab!=='cpi') activateTab(savedTab);
+}catch(e){}
 </script>
