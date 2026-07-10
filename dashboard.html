@@ -180,6 +180,7 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
   <button class="nav-btn on" data-sec="cpi">CPI 물가모델</button>
   <button class="nav-btn"   data-sec="gdp">GDP 성장모델</button>
   <button class="nav-btn"   data-sec="rate">금리모델 (Taylor)</button>
+  <button class="nav-btn"   data-sec="credit">크레딧 전략</button>
   <button class="nav-btn"   data-sec="ultra">초장기 전략</button>
   <button class="nav-btn"   data-sec="cal">경제 캘린더</button>
 </div>
@@ -288,6 +289,14 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
   </div>
   <div class="sec-title">Taylor 분해</div>
   <div class="decomp" id="decomp"></div>
+</div>
+
+<!-- ── 크레딧 전략 섹션 (준비 중 — export_credit_dashboard_data.py에 실제 쿼리 채운 뒤 확장) ── -->
+<div class="section" id="sec-credit">
+  <div id="credit-loading" style="padding:48px;text-align:center;color:var(--muted);font-size:14px">크레딧 전략 데이터 불러오는 중…</div>
+  <div id="credit-content" style="display:none">
+    <p style="color:var(--muted);font-size:13px;padding:20px 0">준비 중입니다. <code>export_credit_dashboard_data.py</code>에 실제 쿼리를 채운 뒤 재실행하면 여기에 표시됩니다.</p>
+  </div>
 </div>
 
 <!-- ── 초장기 전략 섹션 ── -->
@@ -513,6 +522,7 @@ function activateTab(sec){
   btn.classList.add('on');
   document.getElementById('sec-'+sec).classList.add('on');
   if(sec==='ultra') loadUltra();
+  if(sec==='credit') loadCredit();
   setTimeout(()=>{ Object.values(CHARTS).forEach(fn=>fn&&fn()); }, 50);
 }
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1479,6 +1489,22 @@ function makeBidRateChart(cvs, tt, auctionIdx, auctionDates, bidRatio, meanRatio
 }
 
 // ── ultra tab loader (fetch ./data/ultra_data.json) ──────────────────────
+// ── credit tab loader (fetch ./data/credit_data.json) — 준비 중, 실제 차트는 추후 추가 ──
+let creditLoaded=false;
+function loadCredit(){
+  if(creditLoaded)return;
+  fetch('./data/credit_data.json')
+    .then(r=>r.json())
+    .then(()=>{
+      creditLoaded=true;
+      document.getElementById('credit-loading').style.display='none';
+      document.getElementById('credit-content').style.display='';
+    })
+    .catch(()=>{
+      document.getElementById('credit-loading').textContent='데이터 없음 — export_credit_dashboard_data.py 실행 후 push 필요';
+    });
+}
+
 let ultraLoaded=false;
 function loadUltra(){
   if(ultraLoaded)return;
