@@ -109,7 +109,59 @@ canvas{display:block;width:100%;cursor:crosshair}
 
 /* ── footer ── */
 .footer{margin-top:8px;font-size:11px;color:var(--muted);text-align:center;line-height:1.7}
+
+/* ── password gate (첫 방문 시 1회만, localStorage로 이후 새로고침엔 안 물어봄) ── */
+.gate-overlay{display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);
+  align-items:center;justify-content:center}
+html.gate-locked .gate-overlay{display:flex}
+html.gate-locked .wrap{display:none}
+.gate-box{display:flex;flex-direction:column;gap:10px;align-items:center}
+.gate-label{font-size:13px;color:var(--muted)}
+.gate-input{padding:9px 14px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);font-size:14px;width:220px;text-align:center}
+.gate-btn{padding:9px 20px;border-radius:6px;border:none;background:var(--blue);
+  color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.gate-btn:hover{opacity:.9}
+.gate-error{font-size:12px;color:var(--crimson);visibility:hidden}
 </style>
+
+<script>
+if (localStorage.getItem('ultra_gate_ok') !== '1') {
+  document.documentElement.classList.add('gate-locked');
+}
+</script>
+
+<div class="gate-overlay">
+  <div class="gate-box">
+    <div class="gate-label">비밀번호를 입력하세요</div>
+    <input type="password" class="gate-input" id="gate-pw" autocomplete="off">
+    <button class="gate-btn" id="gate-submit">확인</button>
+    <div class="gate-error" id="gate-error">비밀번호가 틀렸습니다</div>
+  </div>
+</div>
+<script>
+(function(){
+  var GATE_HASH = '8f441163451b35a7cf6d9b6c205776e18d7278b9e528b73e4267bb870ae31b5b';
+  async function sha256(text){
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+  }
+  async function submit(){
+    var pw = document.getElementById('gate-pw').value;
+    var h = await sha256(pw);
+    if (h === GATE_HASH) {
+      localStorage.setItem('ultra_gate_ok','1');
+      document.documentElement.classList.remove('gate-locked');
+    } else {
+      document.getElementById('gate-error').style.visibility = 'visible';
+    }
+  }
+  document.getElementById('gate-submit').addEventListener('click', submit);
+  document.getElementById('gate-pw').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') submit();
+  });
+})();
+</script>
 
 <div class="wrap">
 
