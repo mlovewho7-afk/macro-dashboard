@@ -2340,9 +2340,15 @@ function loadRepo(){
       });
 
       function declutter(items, minGap){
+        // 위/아래 교대로 밀어내며 원래 위치 중심을 유지 — 한쪽으로만 밀면 아래로 쏠려 밀림
         const s = [...items].sort((a,b)=>a.y-b.y);
-        for(let i=1;i<s.length;i++){
-          if(s[i].y - s[i-1].y < minGap) s[i].y = s[i-1].y + minGap;
+        for(let iter=0; iter<4; iter++){
+          for(let i=1;i<s.length;i++){
+            if(s[i].y - s[i-1].y < minGap) s[i].y = s[i-1].y + minGap;
+          }
+          for(let i=s.length-2;i>=0;i--){
+            if(s[i+1].y - s[i].y < minGap) s[i].y = s[i+1].y - minGap;
+          }
         }
         return s;
       }
@@ -2446,6 +2452,7 @@ function loadRepo(){
 
         let state=null;
         let pinnedIdx=null;
+        let hoverIdx=null;
         const PADR = {t:16,r:52,b:26,l:46};
 
         function draw(){
@@ -2522,6 +2529,13 @@ function loadRepo(){
               ctx.restore();
             });
           }
+          if(hoverIdx!=null){
+            const hx = toX(hoverIdx);
+            ctx.save();
+            ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([4,3]);
+            ctx.beginPath(); ctx.moveTo(hx,PADR.t); ctx.lineTo(hx,PADR.t+ph); ctx.stroke();
+            ctx.restore();
+          }
 
           const lastI = n-1;
           series.forEach(s=>{
@@ -2590,7 +2604,8 @@ function loadRepo(){
           const rect=cvs.getBoundingClientRect();
           const mx=e.clientX-rect.left;
           const i=hit(mx);
-          if(i<0){ tt.classList.remove('on'); return; }
+          if(i<0){ tt.classList.remove('on'); hoverIdx=null; draw(); return; }
+          hoverIdx=i; draw();
           let rows = `<div class="tt-d">${dates[i]}</div>`;
           series.forEach(s=>{
             const v=s.vals[i];
@@ -2605,7 +2620,7 @@ function loadRepo(){
           if(ty<4) ty=4;
           tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
         });
-        cvs.addEventListener('mouseleave', ()=>{ tt.classList.remove('on'); });
+        cvs.addEventListener('mouseleave', ()=>{ tt.classList.remove('on'); hoverIdx=null; draw(); });
         cvs.addEventListener('click', e=>{
           if(!state) return;
           const rect=cvs.getBoundingClientRect();
@@ -2622,8 +2637,6 @@ function loadRepo(){
         const cvs = document.getElementById(cvsId), tt = document.getElementById(ttId);
         const dates = RD.dates;
         const n = dates.length;
-        const FCPAD = Math.round(n*0.025);
-        const xMaxIdx = (n-1) + FCPAD;
         const series = ['hana_bank','kb_card','hana_capital'].map(key=>({
           key, label:SPREAD[key].label,
           color:()=> key==='hana_bank'?getC().blue:key==='kb_card'?getC().emerald:getC().crimson,
@@ -2633,8 +2646,6 @@ function loadRepo(){
 
         let vmin=Infinity, vmax=-Infinity;
         series.forEach(s=>s.vals.forEach(v=>{ if(v!=null){ if(v<vmin)vmin=v; if(v>vmax)vmax=v; } }));
-        Object.keys(SPREAD).forEach(key=>{ if(latestPred[key]){ const p=latestPred[key][mat]; if(p<vmin)vmin=p; if(p>vmax)vmax=p; } });
-        if(latestPathRate[mat]!=null){ const p=latestPathRate[mat]; if(p<vmin)vmin=p; if(p>vmax)vmax=p; }
         const pad=(vmax-vmin)*0.1||0.5; vmin-=pad; vmax+=pad;
 
         const yearTicks = [];
@@ -2643,6 +2654,7 @@ function loadRepo(){
 
         let state=null;
         let pinnedIdx=null;
+        let hoverIdx=null;
         const PADR = {t:16,r:14,b:26,l:46};
 
         function draw(){
@@ -2651,7 +2663,7 @@ function loadRepo(){
           const ctx = cvs.getContext('2d'); ctx.scale(dpr,dpr);
           const pw=W-PADR.l-PADR.r, ph=H-PADR.t-PADR.b;
           const C = getC();
-          const toX = i => PADR.l + (i/xMaxIdx)*pw;
+          const toX = i => PADR.l + (i/(n-1))*pw;
           const toY = v => PADR.t + (1-(v-vmin)/(vmax-vmin))*ph;
           state = {toX,toY,C,W,H};
 
@@ -2703,6 +2715,13 @@ function loadRepo(){
               ctx.restore();
             });
           }
+          if(hoverIdx!=null){
+            const hx = toX(hoverIdx);
+            ctx.save();
+            ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([4,3]);
+            ctx.beginPath(); ctx.moveTo(hx,PADR.t); ctx.lineTo(hx,PADR.t+ph); ctx.stroke();
+            ctx.restore();
+          }
 
           const lastI = n-1;
           series.forEach(s=>{
@@ -2715,45 +2734,17 @@ function loadRepo(){
           });
           const curLabels = series.map(s=>({ y: toY(s.vals[lastI]), text:s.vals[lastI].toFixed(2)+'%', color:s.color(), v:s.vals[lastI] }))
             .filter(l=>l.v!=null);
-          declutter(curLabels, 13).forEach(l=>{
+          declutter(curLabels, 16).forEach(l=>{
             ctx.save();
             ctx.font='bold 10.5px -apple-system,system-ui,sans-serif';
             ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
             ctx.fillText(l.text, toX(lastI)+8, l.y);
             ctx.restore();
           });
-
-          const fcI = n-1+FCPAD;
-          const fcLabels = [];
-          Object.keys(SPREAD).forEach(key=>{
-            if(!latestPred[key]) return;
-            const color = key==='hana_bank'?C.blue:key==='kb_card'?C.emerald:C.crimson;
-            fcLabels.push({ y: toY(latestPred[key][mat]), text:latestPred[key][mat].toFixed(2)+'%', color, v:latestPred[key][mat] });
-          });
-          if(latestPathRate[mat]!=null){
-            fcLabels.push({ y: toY(latestPathRate[mat]), text:latestPathRate[mat].toFixed(2)+'%', color:C.muted, v:latestPathRate[mat] });
-          }
-          fcLabels.forEach(l=>{
-            const cx=toX(fcI), cy=toY(l.v);
-            ctx.save();
-            ctx.fillStyle=l.color; ctx.strokeStyle=C.surface; ctx.lineWidth=1.6; ctx.setLineDash([]);
-            const ds=5;
-            ctx.beginPath();
-            ctx.moveTo(cx,cy-ds); ctx.lineTo(cx+ds,cy); ctx.lineTo(cx,cy+ds); ctx.lineTo(cx-ds,cy);
-            ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.restore();
-          });
-          declutter(fcLabels, 13).forEach(l=>{
-            ctx.save();
-            ctx.font='bold 10px -apple-system,system-ui,sans-serif';
-            ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
-            ctx.fillText('예측 '+l.text, toX(fcI)+8, l.y);
-            ctx.restore();
-          });
         }
 
         function hit(mx){
-          const i = Math.round(((mx-PADR.l)/(state.W-PADR.l-PADR.r))*xMaxIdx);
+          const i = Math.round(((mx-PADR.l)/(state.W-PADR.l-PADR.r))*(n-1));
           return (i>=0 && i<n) ? i : -1;
         }
         cvs.addEventListener('mousemove', e=>{
@@ -2761,7 +2752,8 @@ function loadRepo(){
           const rect=cvs.getBoundingClientRect();
           const mx=e.clientX-rect.left;
           const i=hit(mx);
-          if(i<0){ tt.classList.remove('on'); return; }
+          if(i<0){ tt.classList.remove('on'); hoverIdx=null; draw(); return; }
+          hoverIdx=i; draw();
           let rows = `<div class="tt-d">${dates[i]}</div>`;
           series.forEach(s=>{
             const v=s.vals[i];
@@ -2774,7 +2766,7 @@ function loadRepo(){
           if(ty<4) ty=4;
           tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
         });
-        cvs.addEventListener('mouseleave', ()=>{ tt.classList.remove('on'); });
+        cvs.addEventListener('mouseleave', ()=>{ tt.classList.remove('on'); hoverIdx=null; draw(); });
         cvs.addEventListener('click', e=>{
           if(!state) return;
           const rect=cvs.getBoundingClientRect();
