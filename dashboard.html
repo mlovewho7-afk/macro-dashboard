@@ -638,6 +638,44 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
       </div>
       <div class="chart-wrap"><canvas id="cvs-repo-1_5y"></canvas><div class="tt" id="tt-repo-1_5y"><div class="tt-d">—</div></div></div>
     </div>
+
+    <div class="sec-title">발행사별 절대금리 추이 (기준금리 포함, % · 2011~ 전체)</div>
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">6개월물</span>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>하나은행</div>
+          <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>케이비카드</div>
+          <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>하나캐피탈</div>
+          <div class="leg"><div class="leg-line" style="background:var(--muted)"></div>기준금리</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="cvs-repo-abs-6m"></canvas><div class="tt" id="tt-repo-abs-6m"><div class="tt-d">—</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">1년물</span>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>하나은행</div>
+          <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>케이비카드</div>
+          <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>하나캐피탈</div>
+          <div class="leg"><div class="leg-line" style="background:var(--muted)"></div>기준금리</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="cvs-repo-abs-1y"></canvas><div class="tt" id="tt-repo-abs-1y"><div class="tt-d">—</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">1.5년물</span>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>하나은행</div>
+          <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>케이비카드</div>
+          <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>하나캐피탈</div>
+          <div class="leg"><div class="leg-line" style="background:var(--muted)"></div>기준금리</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="cvs-repo-abs-1_5y"></canvas><div class="tt" id="tt-repo-abs-1_5y"><div class="tt-d">—</div></div></div>
+    </div>
   </div>
 </div>
 
@@ -2244,6 +2282,7 @@ function loadRepo(){
       let monthState = new Array(12).fill(0);
       let openDropdownIdx = null;
       let latestPred = {};
+      let latestPathRate = {};
 
       document.getElementById('r-base').textContent = BASE_NOW.toFixed(2)+'%';
 
@@ -2311,6 +2350,7 @@ function loadRepo(){
       function renderRepo(){
         const path = computePath();
         const rate6m = path[5], rate1y = path[11];
+        latestPathRate = { '6m':rate6m, '1y':rate1y, '1_5y':rate1y };
 
         const grid = document.getElementById('repo-month-grid');
         grid.innerHTML = '';
@@ -2367,7 +2407,7 @@ function loadRepo(){
           tbody.appendChild(tr);
         });
 
-        ['repo-6m','repo-1y','repo-1_5y'].forEach(k=>CHARTS[k]&&CHARTS[k]());
+        ['repo-6m','repo-1y','repo-1_5y','repo-abs-6m','repo-abs-1y','repo-abs-1_5y'].forEach(k=>CHARTS[k]&&CHARTS[k]());
       }
 
       document.getElementById('repo-reset-btn').addEventListener('click', ()=>{
@@ -2578,9 +2618,181 @@ function loadRepo(){
         return draw;
       }
 
+      function makeRepoAbsChart(cvsId, ttId, mat){
+        const cvs = document.getElementById(cvsId), tt = document.getElementById(ttId);
+        const dates = RD.dates;
+        const n = dates.length;
+        const FCPAD = Math.round(n*0.025);
+        const xMaxIdx = (n-1) + FCPAD;
+        const series = ['hana_bank','kb_card','hana_capital'].map(key=>({
+          key, label:SPREAD[key].label,
+          color:()=> key==='hana_bank'?getC().blue:key==='kb_card'?getC().emerald:getC().crimson,
+          vals: RD[key+'_'+mat],
+        }));
+        series.push({ key:'base_rate', label:'기준금리', color:()=>getC().muted, vals: RD.base_rate, isBase:true });
+
+        let vmin=Infinity, vmax=-Infinity;
+        series.forEach(s=>s.vals.forEach(v=>{ if(v!=null){ if(v<vmin)vmin=v; if(v>vmax)vmax=v; } }));
+        Object.keys(SPREAD).forEach(key=>{ if(latestPred[key]){ const p=latestPred[key][mat]; if(p<vmin)vmin=p; if(p>vmax)vmax=p; } });
+        if(latestPathRate[mat]!=null){ const p=latestPathRate[mat]; if(p<vmin)vmin=p; if(p>vmax)vmax=p; }
+        const pad=(vmax-vmin)*0.1||0.5; vmin-=pad; vmax+=pad;
+
+        const yearTicks = [];
+        let lastYear = null;
+        dates.forEach((d,i)=>{ const y=d.slice(0,4); if(y!==lastYear){ yearTicks.push({i,y}); lastYear=y; } });
+
+        let state=null;
+        let pinnedIdx=null;
+        const PADR = {t:16,r:14,b:26,l:46};
+
+        function draw(){
+          const W = cvs.parentElement.clientWidth, H = Math.round(W*0.38);
+          cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
+          const ctx = cvs.getContext('2d'); ctx.scale(dpr,dpr);
+          const pw=W-PADR.l-PADR.r, ph=H-PADR.t-PADR.b;
+          const C = getC();
+          const toX = i => PADR.l + (i/xMaxIdx)*pw;
+          const toY = v => PADR.t + (1-(v-vmin)/(vmax-vmin))*ph;
+          state = {toX,toY,C,W,H};
+
+          const step = Math.max(0.5, Math.round((vmax-vmin)/5*2)/2);
+          for(let yt=Math.ceil(vmin/step)*step; yt<=vmax; yt+=step){
+            const cy=toY(yt);
+            ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([]);
+            ctx.beginPath(); ctx.moveTo(PADR.l,cy); ctx.lineTo(PADR.l+pw,cy); ctx.stroke();
+            ctx.globalAlpha=1; ctx.fillStyle=C.muted; ctx.font='11px -apple-system,system-ui,sans-serif';
+            ctx.textAlign='right'; ctx.textBaseline='middle';
+            ctx.fillText(yt.toFixed(1)+'%', PADR.l-6, cy);
+          }
+          ctx.textBaseline='top'; ctx.textAlign='center'; ctx.fillStyle=C.muted;
+          ctx.font='11px -apple-system,system-ui,sans-serif';
+          yearTicks.forEach(({i,y})=>{
+            const cx=toX(i);
+            ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.2; ctx.setLineDash([]);
+            ctx.beginPath(); ctx.moveTo(cx,PADR.t); ctx.lineTo(cx,PADR.t+ph); ctx.stroke();
+            ctx.globalAlpha=1; ctx.fillText(y, cx, PADR.t+ph+7);
+          });
+          ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=1; ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(PADR.l,PADR.t); ctx.lineTo(PADR.l,PADR.t+ph); ctx.lineTo(PADR.l+pw,PADR.t+ph); ctx.stroke();
+
+          series.forEach(s=>{
+            ctx.save(); ctx.strokeStyle=s.color(); ctx.lineWidth=s.isBase?1.4:1.6;
+            ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=s.isBase?.7:.9;
+            ctx.setLineDash(s.isBase?[4,3]:[]);
+            ctx.beginPath(); let on=false;
+            s.vals.forEach((v,i)=>{
+              if(v==null){on=false;return;}
+              const cx=toX(i), cy=toY(v);
+              if(!on){ctx.moveTo(cx,cy);on=true;} else ctx.lineTo(cx,cy);
+            });
+            ctx.stroke(); ctx.restore();
+          });
+
+          if(pinnedIdx!=null){
+            const px = toX(pinnedIdx);
+            ctx.save();
+            ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.5; ctx.setLineDash([3,3]);
+            ctx.beginPath(); ctx.moveTo(px,PADR.t); ctx.lineTo(px,PADR.t+ph); ctx.stroke();
+            ctx.restore();
+            series.forEach(s=>{
+              const v = s.vals[pinnedIdx]; if(v==null) return;
+              const cy = toY(v);
+              ctx.save();
+              ctx.strokeStyle=s.color(); ctx.lineWidth=1; ctx.globalAlpha=.55; ctx.setLineDash([5,3]);
+              ctx.beginPath(); ctx.moveTo(PADR.l,cy); ctx.lineTo(PADR.l+pw,cy); ctx.stroke();
+              ctx.restore();
+            });
+          }
+
+          const lastI = n-1;
+          series.forEach(s=>{
+            const v = s.vals[lastI]; if(v==null) return;
+            const cx=toX(lastI), cy=toY(v);
+            ctx.save();
+            ctx.fillStyle=s.color(); ctx.strokeStyle=C.surface; ctx.lineWidth=2; ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(cx,cy,s.isBase?3.5:4,0,Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.restore();
+          });
+          const curLabels = series.map(s=>({ y: toY(s.vals[lastI]), text:s.vals[lastI].toFixed(2)+'%', color:s.color(), v:s.vals[lastI] }))
+            .filter(l=>l.v!=null);
+          declutter(curLabels, 13).forEach(l=>{
+            ctx.save();
+            ctx.font='bold 10.5px -apple-system,system-ui,sans-serif';
+            ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
+            ctx.fillText(l.text, toX(lastI)+8, l.y);
+            ctx.restore();
+          });
+
+          const fcI = n-1+FCPAD;
+          const fcLabels = [];
+          Object.keys(SPREAD).forEach(key=>{
+            if(!latestPred[key]) return;
+            const color = key==='hana_bank'?C.blue:key==='kb_card'?C.emerald:C.crimson;
+            fcLabels.push({ y: toY(latestPred[key][mat]), text:latestPred[key][mat].toFixed(2)+'%', color, v:latestPred[key][mat] });
+          });
+          if(latestPathRate[mat]!=null){
+            fcLabels.push({ y: toY(latestPathRate[mat]), text:latestPathRate[mat].toFixed(2)+'%', color:C.muted, v:latestPathRate[mat] });
+          }
+          fcLabels.forEach(l=>{
+            const cx=toX(fcI), cy=toY(l.v);
+            ctx.save();
+            ctx.fillStyle=l.color; ctx.strokeStyle=C.surface; ctx.lineWidth=1.6; ctx.setLineDash([]);
+            const ds=5;
+            ctx.beginPath();
+            ctx.moveTo(cx,cy-ds); ctx.lineTo(cx+ds,cy); ctx.lineTo(cx,cy+ds); ctx.lineTo(cx-ds,cy);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.restore();
+          });
+          declutter(fcLabels, 13).forEach(l=>{
+            ctx.save();
+            ctx.font='bold 10px -apple-system,system-ui,sans-serif';
+            ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
+            ctx.fillText('예측 '+l.text, toX(fcI)+8, l.y);
+            ctx.restore();
+          });
+        }
+
+        function hit(mx){
+          const i = Math.round(((mx-PADR.l)/(state.W-PADR.l-PADR.r))*xMaxIdx);
+          return (i>=0 && i<n) ? i : -1;
+        }
+        cvs.addEventListener('mousemove', e=>{
+          if(!state) return;
+          const rect=cvs.getBoundingClientRect();
+          const mx=e.clientX-rect.left;
+          const i=hit(mx);
+          if(i<0){ tt.classList.remove('on'); return; }
+          let rows = `<div class="tt-d">${dates[i]}</div>`;
+          series.forEach(s=>{
+            const v=s.vals[i];
+            rows += `<div class="tt-row"><span class="tt-lbl" style="color:${s.color()}">${s.label}</span><span class="tt-num">${v!=null?v.toFixed(2)+'%':'—'}</span></div>`;
+          });
+          tt.innerHTML = rows;
+          const my=e.clientY-rect.top;
+          let tx=mx+14, ty=my-80;
+          if(tx+170>state.W-8) tx=mx-170-14;
+          if(ty<4) ty=4;
+          tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
+        });
+        cvs.addEventListener('mouseleave', ()=>{ tt.classList.remove('on'); });
+        cvs.addEventListener('click', e=>{
+          if(!state) return;
+          const rect=cvs.getBoundingClientRect();
+          const mx=e.clientX-rect.left;
+          const i=hit(mx);
+          pinnedIdx = (i>=0) ? i : null;
+          draw();
+        });
+        draw();
+        return draw;
+      }
+
       CHARTS['repo-6m']   = makeRepoSpreadChart('cvs-repo-6m','tt-repo-6m','6m');
       CHARTS['repo-1y']   = makeRepoSpreadChart('cvs-repo-1y','tt-repo-1y','1y');
       CHARTS['repo-1_5y'] = makeRepoSpreadChart('cvs-repo-1_5y','tt-repo-1_5y','1_5y');
+      CHARTS['repo-abs-6m']   = makeRepoAbsChart('cvs-repo-abs-6m','tt-repo-abs-6m','6m');
+      CHARTS['repo-abs-1y']   = makeRepoAbsChart('cvs-repo-abs-1y','tt-repo-abs-1y','1y');
+      CHARTS['repo-abs-1_5y'] = makeRepoAbsChart('cvs-repo-abs-1_5y','tt-repo-abs-1_5y','1_5y');
 
       renderRepo();
     })
