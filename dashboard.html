@@ -67,6 +67,37 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .credit-endlbl{font-size:10.5px;fill:var(--text);font-weight:700}
 .credit-mmlbl{font-size:9.5px;fill:var(--muted);font-weight:600}
 
+/* ── 레포 전략: 기준금리 예상경로 빌더 ── */
+.month-box{position:relative;border-radius:8px;border:1px solid var(--border);padding:10px 6px 9px;
+  text-align:center;cursor:pointer;user-select:none;transition:transform .08s ease,box-shadow .08s ease;
+  display:flex;flex-direction:column;gap:5px;align-items:center}
+.month-box:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.month-box:active{transform:translateY(0)}
+.month-box .m-label{font-size:10px;font-weight:700;letter-spacing:.03em;color:var(--muted)}
+.month-box .m-rate{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.month-box .m-state{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.m-dropdown{position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);z-index:40;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  box-shadow:0 8px 20px rgba(0,0,0,.18);overflow:hidden;width:112px}
+.m-dropdown-item{padding:8px 10px;font-size:11.5px;font-weight:600;text-align:left;cursor:pointer}
+.m-dropdown-item:hover{filter:brightness(1.08)}
+.m-dropdown-item + .m-dropdown-item{border-top:1px solid var(--border)}
+.repo-month-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-bottom:18px}
+@media(max-width:760px){.repo-month-grid{grid-template-columns:repeat(6,1fr)}}
+@media(max-width:420px){.repo-month-grid{grid-template-columns:repeat(4,1fr)}}
+.repo-path-summary{display:flex;gap:20px;flex-wrap:wrap;align-items:baseline;padding:12px 16px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:20px;
+  font-size:12.5px;color:var(--muted)}
+.repo-path-summary b{color:var(--text);font-variant-numeric:tabular-nums}
+.repo-reset-btn{margin-left:auto;font-size:11px;font-weight:600;padding:6px 12px;border-radius:6px;
+  border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
+.repo-reset-btn:hover{background:var(--surface2)}
+.repo-pred-val{font-weight:700;font-size:14px}
+.repo-pred-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
+.repo-path-legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.repo-path-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.repo-path-legend-swatch{width:14px;height:14px;border-radius:4px}
+
 /* ── tiles ── */
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
 @media(max-width:640px){.tiles{grid-template-columns:repeat(2,1fr)}}
@@ -503,7 +534,110 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
 <div class="section" id="sec-repo">
   <div id="repo-loading" style="padding:48px;text-align:center;color:var(--muted);font-size:14px">레포펀드 데이터 불러오는 중…</div>
   <div id="repo-content" style="display:none">
-    <p style="color:var(--muted);font-size:13px;padding:20px 0">준비 중입니다. <code>export_repo_dashboard_data.py</code>에 실제 쿼리를 채운 뒤 재실행하면 여기에 표시됩니다.</p>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:16px">
+      기준금리(레포 조달비용) 대비 하나은행·케이비카드·하나캐피탈 시가평가 3사평균 금리(YTM)의 스프레드로 캐리 수익을 추적한다.
+      아래에서 향후 12개월 기준금리 경로를 직접 만들면, 그 경로가 만기별·발행사별 스프레드에 어떤 절대금리를 만드는지 즉시 계산된다.
+    </p>
+
+    <div class="tiles">
+      <div class="tile">
+        <div class="t-label">현재 기준금리</div>
+        <div class="t-val" id="r-base">—</div>
+        <div class="t-sub">2025-05-29 인하 이후 동결</div>
+      </div>
+      <div class="tile">
+        <div class="t-label">6개월 후 예상</div>
+        <div class="t-val c-blue" id="r-6m">—</div>
+        <div class="t-sub" id="r-6m-sub">—</div>
+      </div>
+      <div class="tile">
+        <div class="t-label">1년 후 예상</div>
+        <div class="t-val c-emerald" id="r-1y">—</div>
+        <div class="t-sub" id="r-1y-sub">—</div>
+      </div>
+      <div class="tile">
+        <div class="t-label">경로 요약</div>
+        <div class="t-val c-violet" id="r-summary" style="font-size:18px">—</div>
+        <div class="t-sub">박스를 클릭해 경로를 만드세요</div>
+      </div>
+    </div>
+
+    <div class="sec-title" style="margin-top:4px">2026년 금통위 기준금리 결정 일정</div>
+    <div class="tbl-card" style="padding:14px 16px;margin-bottom:18px">
+      <div id="repo-bok-schedule" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><span class="card-title">기준금리 예상경로 빌더</span></div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+        각 월 박스를 클릭하면 5개 옵션(동결·1회인상·2회인상·1회인하·2회인하)이 펼쳐집니다.
+        고른 만큼 그 달의 기준금리 변동으로 누적 반영됩니다.
+      </p>
+      <div class="repo-path-legend">
+        <div class="repo-path-legend-item"><div class="repo-path-legend-swatch" style="background:var(--surface2);border:1px solid var(--border)"></div>동결</div>
+        <div class="repo-path-legend-item"><div class="repo-path-legend-swatch" style="background:var(--amber)"></div>1회인상 (+25bp)</div>
+        <div class="repo-path-legend-item"><div class="repo-path-legend-swatch" style="background:var(--crimson)"></div>2회인상 (+50bp)</div>
+        <div class="repo-path-legend-item"><div class="repo-path-legend-swatch" style="background:var(--blue)"></div>1회인하 (-25bp)</div>
+        <div class="repo-path-legend-item"><div class="repo-path-legend-swatch" style="background:var(--violet)"></div>2회인하 (-50bp)</div>
+      </div>
+      <div class="repo-month-grid" id="repo-month-grid"></div>
+      <div class="repo-path-summary">
+        <div>경로 종점(12개월 후): <b id="r-ps-end">—</b></div>
+        <div>총 변동: <b id="r-ps-total">—</b></div>
+        <div>인상 <b id="r-ps-hikes">0</b>회 · 인하 <b id="r-ps-cuts">0</b>회</div>
+        <button class="repo-reset-btn" id="repo-reset-btn">전부 동결로 초기화</button>
+      </div>
+    </div>
+
+    <div class="sec-title">경로 기반 예측 절대금리 (경로금리 + 과거 인상·동결기 평균 스프레드)</div>
+    <div class="tbl-card">
+      <table>
+        <thead><tr>
+          <th>발행사</th><th style="text-align:right">오늘 실제</th>
+          <th style="text-align:right">6개월</th><th style="text-align:right">1년</th><th style="text-align:right">1.5년</th>
+        </tr></thead>
+        <tbody id="repo-pred-body"></tbody>
+      </table>
+    </div>
+    <p style="font-size:11.5px;color:var(--muted);line-height:1.6;margin:10px 0 0">
+      스프레드는 1차 인상일~다음 인하 직전(인상+동결 국면 한정) 평균 — 하나은행 6m/1y/1.5y = 36/50/59bp ·
+      케이비카드 = 52/71/82bp · 하나캐피탈 = 60/82/95bp. 1.5년물은 12개월 경로 범위를 벗어나므로 1년 종점 금리를 유지한다고 가정.
+    </p>
+
+    <div class="sec-title">발행사별 스프레드 추이 (기준금리 대비, bp · 2011~ 전체)</div>
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">6개월물</span>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>하나은행</div>
+          <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>케이비카드</div>
+          <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>하나캐피탈</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="cvs-repo-6m"></canvas><div class="tt" id="tt-repo-6m"><div class="tt-d">—</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">1년물</span>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>하나은행</div>
+          <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>케이비카드</div>
+          <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>하나캐피탈</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="cvs-repo-1y"></canvas><div class="tt" id="tt-repo-1y"><div class="tt-d">—</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-title">1.5년물</span>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>하나은행</div>
+          <div class="leg"><div class="leg-line" style="background:var(--emerald)"></div>케이비카드</div>
+          <div class="leg"><div class="leg-line" style="background:var(--crimson)"></div>하나캐피탈</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="cvs-repo-1_5y"></canvas><div class="tt" id="tt-repo-1_5y"><div class="tt-d">—</div></div></div>
+    </div>
   </div>
 </div>
 
@@ -565,6 +699,7 @@ function activateTab(sec){
   document.getElementById('sec-'+sec).classList.add('on');
   if(sec==='ultra') loadUltra();
   if(sec==='credit') loadCredit();
+  if(sec==='repo') loadRepo();
   setTimeout(()=>{ Object.values(CHARTS).forEach(fn=>fn&&fn()); }, 50);
 }
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -2079,6 +2214,379 @@ function creditRender(tabKey){
     CREDIT_SECTORS.forEach(s=>grid.appendChild(creditRenderEventSectorPanel(s,creditS3Mat)));
     areaEl.appendChild(grid);
   }
+}
+
+// ── repo tab loader (fetch ./data/repo_data.json) ─────────────────────────
+let repoLoaded=false;
+function loadRepo(){
+  if(repoLoaded)return;
+  fetch('./data/repo_data.json')
+    .then(r=>r.json())
+    .then(RD=>{
+      repoLoaded=true;
+      document.getElementById('repo-loading').style.display='none';
+      document.getElementById('repo-content').style.display='';
+
+      const BASE_NOW = RD.base_rate.at(-1);
+      const SPREAD = {
+        hana_bank:    { label:'하나은행',   ...RD.spread_bp.hana_bank },
+        kb_card:      { label:'케이비카드', ...RD.spread_bp.kb_card },
+        hana_capital: { label:'하나캐피탈', ...RD.spread_bp.hana_capital },
+      };
+      const STATES = [
+        {key:'hold',  label:'동결',      delta:0,   bg:'var(--surface2)', fg:'var(--muted)', border:true},
+        {key:'hike1', label:'+1회인상',  delta:25,  bg:'var(--amber)',    fg:'#fff'},
+        {key:'hike2', label:'+2회인상',  delta:50,  bg:'var(--crimson)',  fg:'#fff'},
+        {key:'cut1',  label:'-1회인하',  delta:-25, bg:'var(--blue)',     fg:'#fff'},
+        {key:'cut2',  label:'-2회인하',  delta:-50, bg:'var(--violet)',   fg:'#fff'},
+      ];
+      const MONTH_LABELS = ['7월','8월','9월','10월','11월','12월','27년 1월','2월','3월','4월','5월','6월'];
+      let monthState = new Array(12).fill(0);
+      let openDropdownIdx = null;
+      let latestPred = {};
+
+      document.getElementById('r-base').textContent = BASE_NOW.toFixed(2)+'%';
+
+      // 금통위 일정
+      const bokEl = document.getElementById('repo-bok-schedule');
+      const todayStr = RD.generated;
+      RD.bok_schedule.forEach(m=>{
+        const days = Math.round((new Date(m.date) - new Date(todayStr)) / 86400000);
+        const cls = m.done ? 'cal-ok' : (days<=0?'cal-today':days<=7?'cal-soon':days<=30?'cal-near':'cal-ok');
+        const label = m.done ? '완료' : (days<=0?'TODAY':'D-'+days);
+        const chip = document.createElement('div');
+        chip.style.cssText='display:flex;align-items:center;gap:8px;font-size:12.5px';
+        chip.innerHTML = `<span class="cal-d ${cls}">${label}</span><span>${m.date}</span>`;
+        bokEl.appendChild(chip);
+      });
+
+      function computePath(){
+        const path = [];
+        let cur = BASE_NOW;
+        for(let i=0;i<12;i++){
+          cur = Math.round((cur + STATES[monthState[i]].delta/100) * 100) / 100;
+          path.push(cur);
+        }
+        return path;
+      }
+
+      function closeDropdown(){
+        const el = document.querySelector('#sec-repo .m-dropdown');
+        if(el) el.remove();
+        openDropdownIdx = null;
+      }
+      function openDropdown(box, idx){
+        closeDropdown();
+        openDropdownIdx = idx;
+        const dd = document.createElement('div');
+        dd.className = 'm-dropdown';
+        STATES.forEach((st,si)=>{
+          const item = document.createElement('div');
+          item.className = 'm-dropdown-item';
+          item.style.background = st.key==='hold' ? 'var(--surface)' : st.bg;
+          item.style.color = st.key==='hold' ? 'var(--text)' : '#fff';
+          item.textContent = st.label;
+          item.addEventListener('click', ev=>{
+            ev.stopPropagation();
+            monthState[idx] = si;
+            closeDropdown();
+            renderRepo();
+          });
+          dd.appendChild(item);
+        });
+        box.appendChild(dd);
+      }
+      document.addEventListener('click', e=>{
+        if(!e.target.closest('.month-box')) closeDropdown();
+      });
+
+      function declutter(items, minGap){
+        const s = [...items].sort((a,b)=>a.y-b.y);
+        for(let i=1;i<s.length;i++){
+          if(s[i].y - s[i-1].y < minGap) s[i].y = s[i-1].y + minGap;
+        }
+        return s;
+      }
+
+      function renderRepo(){
+        const path = computePath();
+        const rate6m = path[5], rate1y = path[11];
+
+        const grid = document.getElementById('repo-month-grid');
+        grid.innerHTML = '';
+        path.forEach((rate,i)=>{
+          const st = STATES[monthState[i]];
+          const box = document.createElement('div');
+          box.className = 'month-box';
+          box.style.background = st.bg;
+          box.style.borderColor = st.border ? 'var(--border)' : 'transparent';
+          box.innerHTML = `
+            <div class="m-label" style="color:${st.key==='hold'?'var(--muted)':'rgba(255,255,255,.85)'}">${MONTH_LABELS[i]}</div>
+            <div class="m-rate" style="color:${st.key==='hold'?'var(--text)':'#fff'}">${rate.toFixed(2)}%</div>
+            <div class="m-state" style="background:${st.key==='hold'?'var(--border)':'rgba(255,255,255,.22)'};color:${st.fg}">${st.label} ▾</div>`;
+          box.addEventListener('click', ev=>{
+            ev.stopPropagation();
+            if(openDropdownIdx===i){ closeDropdown(); } else { openDropdown(box, i); }
+          });
+          grid.appendChild(box);
+        });
+
+        document.getElementById('r-6m').textContent = rate6m.toFixed(2)+'%';
+        document.getElementById('r-6m-sub').textContent = (rate6m>BASE_NOW?'+':'')+Math.round((rate6m-BASE_NOW)*100)+'bp vs 오늘';
+        document.getElementById('r-1y').textContent = rate1y.toFixed(2)+'%';
+        document.getElementById('r-1y-sub').textContent = (rate1y>BASE_NOW?'+':'')+Math.round((rate1y-BASE_NOW)*100)+'bp vs 오늘';
+
+        const hikes = monthState.filter(s=>s===1).length + monthState.filter(s=>s===2).length*2;
+        const cuts  = monthState.filter(s=>s===3).length + monthState.filter(s=>s===4).length*2;
+        document.getElementById('r-summary').textContent = `${hikes>0?'+'+hikes:hikes}/-${cuts} 회`;
+
+        document.getElementById('r-ps-end').textContent = rate1y.toFixed(2)+'%';
+        const totalBp = Math.round((rate1y-BASE_NOW)*100);
+        document.getElementById('r-ps-total').textContent = (totalBp>=0?'+':'')+totalBp+'bp';
+        document.getElementById('r-ps-hikes').textContent = hikes;
+        document.getElementById('r-ps-cuts').textContent = cuts;
+
+        const tbody = document.getElementById('repo-pred-body');
+        tbody.innerHTML = '';
+        latestPred = {};
+        Object.entries(SPREAD).forEach(([key,s])=>{
+          const todayVals = {
+            '6m': RD[key+'_6m'].at(-1), '1y': RD[key+'_1y'].at(-1), '1_5y': RD[key+'_1_5y'].at(-1)
+          };
+          const p6m = rate6m + s['6m']/100;
+          const p1y = rate1y + s['1y']/100;
+          const p1_5y = rate1y + s['1_5y']/100;
+          latestPred[key] = { '6m':p6m, '1y':p1y, '1_5y':p1_5y };
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${s.label}</strong></td>
+            <td class="td-num c-muted">${todayVals['6m'].toFixed(2)} / ${todayVals['1y'].toFixed(2)} / ${todayVals['1_5y'].toFixed(2)}%</td>
+            <td class="td-num"><div class="repo-pred-val">${p6m.toFixed(2)}%</div><div class="repo-pred-sub">${rate6m.toFixed(2)}% + ${s['6m']}bp</div></td>
+            <td class="td-num"><div class="repo-pred-val">${p1y.toFixed(2)}%</div><div class="repo-pred-sub">${rate1y.toFixed(2)}% + ${s['1y']}bp</div></td>
+            <td class="td-num"><div class="repo-pred-val">${p1_5y.toFixed(2)}%</div><div class="repo-pred-sub">${rate1y.toFixed(2)}% + ${s['1_5y']}bp</div></td>`;
+          tbody.appendChild(tr);
+        });
+
+        ['repo-6m','repo-1y','repo-1_5y'].forEach(k=>CHARTS[k]&&CHARTS[k]());
+      }
+
+      document.getElementById('repo-reset-btn').addEventListener('click', ()=>{
+        monthState = new Array(12).fill(0);
+        renderRepo();
+      });
+
+      function makeRepoSpreadChart(cvsId, ttId, mat){
+        const cvs = document.getElementById(cvsId), tt = document.getElementById(ttId);
+        const dates = RD.dates;
+        const n = dates.length;
+        const FCPAD = Math.round(n*0.025);
+        const xMaxIdx = (n-1) + FCPAD;
+        const series = ['hana_bank','kb_card','hana_capital'].map(key=>({
+          key, label:SPREAD[key].label,
+          color:()=> key==='hana_bank'?getC().blue:key==='kb_card'?getC().emerald:getC().crimson,
+          vals: RD[key+'_'+mat].map((v,i)=>v!=null&&RD.base_rate[i]!=null?Math.round((v - RD.base_rate[i])*10000)/100:null),
+        }));
+        let vmin=Infinity, vmax=-Infinity;
+        series.forEach(s=>s.vals.forEach(v=>{ if(v!=null){ if(v<vmin)vmin=v; if(v>vmax)vmax=v; } }));
+        Object.keys(SPREAD).forEach(key=>{
+          if(latestPred[key]){
+            const predSpread = Math.round((latestPred[key][mat]-BASE_NOW)*10000)/100;
+            if(predSpread<vmin)vmin=predSpread; if(predSpread>vmax)vmax=predSpread;
+          }
+        });
+        const pad=(vmax-vmin)*0.12||5; vmin-=pad; vmax+=pad;
+
+        const rateVals = RD.base_rate;
+        let rmin=Math.min(...rateVals), rmax=Math.max(...rateVals);
+        const rpad=(rmax-rmin)*0.15||0.5; rmin-=rpad; rmax+=rpad;
+
+        const yearTicks = [];
+        let lastYear = null;
+        dates.forEach((d,i)=>{ const y=d.slice(0,4); if(y!==lastYear){ yearTicks.push({i,y}); lastYear=y; } });
+
+        let state=null;
+        let pinnedIdx=null;
+        const PADR = {t:16,r:52,b:26,l:46};
+
+        function draw(){
+          const W = cvs.parentElement.clientWidth, H = Math.round(W*0.38);
+          cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
+          const ctx = cvs.getContext('2d'); ctx.scale(dpr,dpr);
+          const pw=W-PADR.l-PADR.r, ph=H-PADR.t-PADR.b;
+          const C = getC();
+          const toX = i => PADR.l + (i/xMaxIdx)*pw;
+          const toY = v => PADR.t + (1-(v-vmin)/(vmax-vmin))*ph;
+          const toYR = v => PADR.t + (1-(v-rmin)/(rmax-rmin))*ph;
+          state = {toX,toY,toYR,C,W,H};
+
+          const step = Math.max(10, Math.round((vmax-vmin)/5/10)*10);
+          for(let yt=Math.ceil(vmin/step)*step; yt<=vmax; yt+=step){
+            const cy=toY(yt);
+            ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([]);
+            ctx.beginPath(); ctx.moveTo(PADR.l,cy); ctx.lineTo(PADR.l+pw,cy); ctx.stroke();
+            ctx.globalAlpha=1; ctx.fillStyle=C.muted; ctx.font='11px -apple-system,system-ui,sans-serif';
+            ctx.textAlign='right'; ctx.textBaseline='middle';
+            ctx.fillText(yt.toFixed(0)+'bp', PADR.l-6, cy);
+          }
+          for(let rt=Math.ceil(rmin); rt<=rmax; rt+=1){
+            const cy=toYR(rt);
+            ctx.fillStyle=C.muted; ctx.font='10.5px -apple-system,system-ui,sans-serif';
+            ctx.textAlign='left'; ctx.textBaseline='middle';
+            ctx.fillText(rt.toFixed(0)+'%', PADR.l+pw+6, cy);
+          }
+          ctx.textBaseline='top'; ctx.textAlign='center'; ctx.fillStyle=C.muted;
+          ctx.font='11px -apple-system,system-ui,sans-serif';
+          yearTicks.forEach(({i,y})=>{
+            const cx=toX(i);
+            ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.2; ctx.setLineDash([]);
+            ctx.beginPath(); ctx.moveTo(cx,PADR.t); ctx.lineTo(cx,PADR.t+ph); ctx.stroke();
+            ctx.globalAlpha=1; ctx.fillText(y, cx, PADR.t+ph+7);
+          });
+          ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=1; ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(PADR.l,PADR.t); ctx.lineTo(PADR.l,PADR.t+ph); ctx.lineTo(PADR.l+pw,PADR.t+ph); ctx.stroke();
+
+          ctx.save(); ctx.strokeStyle=C.muted; ctx.lineWidth=1.4; ctx.globalAlpha=.55;
+          ctx.setLineDash([4,3]); ctx.lineJoin='round';
+          ctx.beginPath(); let ron=false;
+          rateVals.forEach((v,i)=>{
+            if(v==null){ron=false;return;}
+            const cx=toX(i), cy=toYR(v);
+            if(!ron){ctx.moveTo(cx,cy);ron=true;} else ctx.lineTo(cx,cy);
+          });
+          ctx.stroke(); ctx.restore();
+
+          series.forEach(s=>{
+            ctx.save(); ctx.strokeStyle=s.color(); ctx.lineWidth=1.6;
+            ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=.9; ctx.setLineDash([]);
+            ctx.beginPath(); let on=false;
+            s.vals.forEach((v,i)=>{
+              if(v==null){on=false;return;}
+              const cx=toX(i), cy=toY(v);
+              if(!on){ctx.moveTo(cx,cy);on=true;} else ctx.lineTo(cx,cy);
+            });
+            ctx.stroke(); ctx.restore();
+          });
+
+          if(pinnedIdx!=null){
+            const px = toX(pinnedIdx);
+            ctx.save();
+            ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.5; ctx.setLineDash([3,3]);
+            ctx.beginPath(); ctx.moveTo(px,PADR.t); ctx.lineTo(px,PADR.t+ph); ctx.stroke();
+            ctx.restore();
+            series.forEach(s=>{
+              const v = s.vals[pinnedIdx]; if(v==null) return;
+              const cy = toY(v);
+              ctx.save();
+              ctx.strokeStyle=s.color(); ctx.lineWidth=1; ctx.globalAlpha=.55; ctx.setLineDash([5,3]);
+              ctx.beginPath(); ctx.moveTo(PADR.l,cy); ctx.lineTo(PADR.l+pw,cy); ctx.stroke();
+              ctx.restore();
+            });
+          }
+
+          const lastI = n-1;
+          series.forEach(s=>{
+            const v = s.vals[lastI]; if(v==null) return;
+            const cx=toX(lastI), cy=toY(v);
+            ctx.save();
+            ctx.fillStyle=s.color(); ctx.strokeStyle=C.surface; ctx.lineWidth=2; ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.restore();
+          });
+          const curLabels = series.map(s=>({ y: toY(s.vals[lastI]), text:(s.vals[lastI]>=0?'+':'')+(s.vals[lastI]??0).toFixed(0)+'bp', color:s.color(), v:s.vals[lastI] }))
+            .filter(l=>l.v!=null);
+          declutter(curLabels, 13).forEach(l=>{
+            ctx.save();
+            ctx.font='bold 10.5px -apple-system,system-ui,sans-serif';
+            ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
+            ctx.fillText(l.text, toX(lastI)+8, l.y);
+            ctx.restore();
+          });
+          const rLast = rateVals[lastI];
+          if(rLast!=null){
+            const cx=toX(lastI), cy=toYR(rLast);
+            ctx.save();
+            ctx.fillStyle=C.muted; ctx.strokeStyle=C.surface; ctx.lineWidth=2; ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(cx,cy,3.5,0,Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.font='10px -apple-system,system-ui,sans-serif';
+            ctx.fillStyle=C.muted; ctx.textAlign='left'; ctx.textBaseline='top';
+            ctx.fillText('기준금리 '+rLast.toFixed(2)+'%', cx+8, cy+7);
+            ctx.restore();
+          }
+
+          const fcI = n-1+FCPAD;
+          const fcLabels = [];
+          Object.keys(SPREAD).forEach(key=>{
+            if(!latestPred[key]) return;
+            const predAbs = latestPred[key][mat];
+            const predSpread = Math.round((predAbs-BASE_NOW)*10000)/100;
+            const color = key==='hana_bank'?C.blue:key==='kb_card'?C.emerald:C.crimson;
+            fcLabels.push({ y: toY(predSpread), text:(predSpread>=0?'+':'')+predSpread.toFixed(0)+'bp', color, v:predSpread });
+          });
+          fcLabels.forEach(l=>{
+            const cx=toX(fcI), cy=toY(l.v);
+            ctx.save();
+            ctx.fillStyle=l.color; ctx.strokeStyle=C.surface; ctx.lineWidth=1.6; ctx.setLineDash([]);
+            const ds=5;
+            ctx.beginPath();
+            ctx.moveTo(cx,cy-ds); ctx.lineTo(cx+ds,cy); ctx.lineTo(cx,cy+ds); ctx.lineTo(cx-ds,cy);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.restore();
+          });
+          declutter(fcLabels, 13).forEach(l=>{
+            ctx.save();
+            ctx.font='bold 10px -apple-system,system-ui,sans-serif';
+            ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
+            ctx.fillText('예측 '+l.text, toX(fcI)+8, l.y);
+            ctx.restore();
+          });
+        }
+
+        function hit(mx){
+          const i = Math.round(((mx-PADR.l)/(state.W-PADR.l-PADR.r))*xMaxIdx);
+          return (i>=0 && i<n) ? i : -1;
+        }
+        cvs.addEventListener('mousemove', e=>{
+          if(!state) return;
+          const rect=cvs.getBoundingClientRect();
+          const mx=e.clientX-rect.left;
+          const i=hit(mx);
+          if(i<0){ tt.classList.remove('on'); return; }
+          let rows = `<div class="tt-d">${dates[i]}</div>`;
+          series.forEach(s=>{
+            const v=s.vals[i];
+            rows += `<div class="tt-row"><span class="tt-lbl" style="color:${s.color()}">${s.label}</span><span class="tt-num">${v!=null?(v>=0?'+':'')+v.toFixed(1)+'bp':'—'}</span></div>`;
+          });
+          const rv=RD.base_rate[i];
+          rows += `<div class="tt-row"><span class="tt-lbl">기준금리</span><span class="tt-num">${rv!=null?rv.toFixed(2)+'%':'—'}</span></div>`;
+          tt.innerHTML = rows;
+          const my=e.clientY-rect.top;
+          let tx=mx+14, ty=my-70;
+          if(tx+170>state.W-8) tx=mx-170-14;
+          if(ty<4) ty=4;
+          tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
+        });
+        cvs.addEventListener('mouseleave', ()=>{ tt.classList.remove('on'); });
+        cvs.addEventListener('click', e=>{
+          if(!state) return;
+          const rect=cvs.getBoundingClientRect();
+          const mx=e.clientX-rect.left;
+          const i=hit(mx);
+          pinnedIdx = (i>=0) ? i : null;
+          draw();
+        });
+        draw();
+        return draw;
+      }
+
+      CHARTS['repo-6m']   = makeRepoSpreadChart('cvs-repo-6m','tt-repo-6m','6m');
+      CHARTS['repo-1y']   = makeRepoSpreadChart('cvs-repo-1y','tt-repo-1y','1y');
+      CHARTS['repo-1_5y'] = makeRepoSpreadChart('cvs-repo-1_5y','tt-repo-1_5y','1_5y');
+
+      renderRepo();
+    })
+    .catch(()=>{
+      document.getElementById('repo-loading').textContent='데이터 없음 — export_repo_dashboard_data.py 실행 후 push 필요';
+    });
 }
 
 function loadCredit(){
