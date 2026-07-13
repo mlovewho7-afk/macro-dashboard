@@ -3273,6 +3273,15 @@ function makeCvBandRate(cvs,tt,dates,spread,fair,upper,lower){
     ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText('플래트너 압력 ↑',lx,PAD.t+5);
     ctx.textBaseline='bottom';ctx.fillText('스티프너 압력 ↓',lx,PAD.t+ph-5);
     ctx.globalAlpha=1;
+    // 밴드 상·하단 현재값 표기 (우측 내부)
+    const lastU=upper.filter(v=>v!=null).at(-1),lastL=lower.filter(v=>v!=null).at(-1);
+    if(lastU!=null&&lastL!=null){
+      ctx.font='10px -apple-system,system-ui,sans-serif';ctx.globalAlpha=dark?.8:.7;
+      ctx.fillStyle='#8e44ad';ctx.textAlign='right';
+      ctx.textBaseline='bottom';ctx.fillText(lastU.toFixed(1)+'bp',PAD.l+pw-4,toY(lastU)-1);
+      ctx.textBaseline='top';ctx.fillText(lastL.toFixed(1)+'bp',PAD.l+pw-4,toY(lastL)+1);
+      ctx.globalAlpha=1;
+    }
     // y 그리드
     const step=niceStep(yMax-yMin);
     ctx.font='11px -apple-system,system-ui,sans-serif';
