@@ -1,0 +1,15 @@
+{
+  "date": "2026-07",
+  "signal": "플래트너",
+  "score": -0.687,
+  "spread_bp": 48.2,
+  "kgb_3y": 3.78,
+  "kgb_10y": 4.262,
+  "regime": "인플레이션",
+  "pi_gap": 2.149,
+  "y_gap": 0.615,
+  "z_cycle": -2.37,
+  "z_mom": 1.0,
+  "residual": -0.919,
+  "fair_value_bp": 28.7
+}
