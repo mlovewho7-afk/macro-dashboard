@@ -612,8 +612,10 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
       <div class="card-hd">
         <span class="card-title">⑥ 3/10년 스프레드 + OLS 밴드 (±1.5σ)</span>
         <div class="legend">
-          <div class="leg"><div class="leg-line" style="background:#e74c3c;opacity:.5"></div>스티프너 구간</div>
-          <div class="leg"><div class="leg-line" style="background:#3498db;opacity:.5"></div>플래트너 구간</div>
+          <div class="leg"><div class="leg-line" style="background:#333"></div>3/10년 스프레드</div>
+          <div class="leg"><div class="leg-dash" style="border-color:#999;opacity:.8"></div>OLS 적정값</div>
+          <div class="leg"><div class="leg-line" style="background:#8e44ad;opacity:.5;height:8px;border-radius:2px"></div>OLS 밴드 (±1.5σ)</div>
+          <div class="leg"><div class="leg-line" style="background:#e67e22"></div>기준금리 (우축)</div>
         </div>
       </div>
       <div class="chart-wrap">
@@ -622,6 +624,9 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
           <div class="tt-d" id="tt-cv6-d">—</div>
           <div class="tt-row"><span class="tt-lbl">스프레드</span><span class="tt-num" id="tt-cv6-a">—</span></div>
           <div class="tt-row"><span class="tt-lbl">OLS 적정값</span><span class="tt-num" id="tt-cv6-b">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:#8e44ad">밴드 상단</span><span class="tt-num" id="tt-cv6-up">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:#8e44ad">밴드 하단</span><span class="tt-num" id="tt-cv6-dn">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:#e67e22">기준금리</span><span class="tt-num" id="tt-cv6-c">—</span></div>
         </div>
       </div>
     </div>
@@ -3244,51 +3249,61 @@ function makeCvBar(cvs,tt,dates,vals,colorFn,refLines,ttIds,yFmtFn){
   return draw;
 }
 
-// 스프레드 + OLS 밴드 (cv6)
-function makeCvBandRate(cvs,tt,dates,spread,fair,upper,lower){
+// 스프레드 + OLS 밴드 + 기준금리 (cv6)
+function makeCvBandRate(cvs,tt,dates,spread,fair,upper,lower,baseRate){
   const n=dates.length;
-  const allV=[...spread,...fair,...upper,...lower].filter(v=>v!=null);
-  const vMin=Math.min(...allV),vMax=Math.max(...allV);
-  const vPad=(vMax-vMin)*.10||5;
-  const yMin=vMin-vPad,yMax=vMax+vPad;
+  const RPAD=46;
+  const allBp=[...spread,...fair,...upper,...lower].filter(v=>v!=null);
+  const bpMin=Math.min(...allBp),bpMax=Math.max(...allBp);
+  const bpPad=(bpMax-bpMin)*.10||5;
+  const yLMin=bpMin-bpPad,yLMax=bpMax+bpPad;
+  const allR=baseRate.filter(v=>v!=null);
+  const rMin=Math.min(...allR),rMax=Math.max(...allR);
+  const rPad=(rMax-rMin)*.18||0.5;
+  const yRMin=rMin-rPad,yRMax=rMax+rPad;
   let state=null;
   function draw(){
     const W=cvs.parentElement.clientWidth,H=Math.round(W*.30);
     cvs.width=W*dpr;cvs.height=H*dpr;cvs.style.height=H+'px';
     const ctx=cvs.getContext('2d');ctx.scale(dpr,dpr);
-    const pw=W-PAD.l-PAD.r,ph=H-PAD.t-PAD.b;
+    const pw=W-PAD.l-RPAD,ph=H-PAD.t-PAD.b;
     const C=getC();const dark=cvIsDark();
     const toX=i=>PAD.l+i/(n-1)*pw;
-    const toY=v=>PAD.t+(1-(v-yMin)/(yMax-yMin))*ph;
-    state={toX,toY,C,W,H,n};
+    const toYL=v=>PAD.t+(1-(v-yLMin)/(yLMax-yLMin))*ph;
+    const toYR=v=>PAD.t+(1-(v-yRMin)/(yRMax-yRMin))*ph;
+    state={toX,toYL,toYR,C,W,H,n};
     // OLS 밴드 채우기
     ctx.save();ctx.globalAlpha=dark?.15:.12;ctx.fillStyle='#8e44ad';
     ctx.beginPath();let fst=false;
-    for(let i=0;i<n;i++){if(upper[i]==null)continue;if(!fst){ctx.moveTo(toX(i),toY(upper[i]));fst=true;}else ctx.lineTo(toX(i),toY(upper[i]));}
-    for(let i=n-1;i>=0;i--){if(lower[i]!=null)ctx.lineTo(toX(i),toY(lower[i]));}
+    for(let i=0;i<n;i++){if(upper[i]==null)continue;if(!fst){ctx.moveTo(toX(i),toYL(upper[i]));fst=true;}else ctx.lineTo(toX(i),toYL(upper[i]));}
+    for(let i=n-1;i>=0;i--){if(lower[i]!=null)ctx.lineTo(toX(i),toYL(lower[i]));}
     ctx.closePath();ctx.fill();ctx.restore();
-    // 영역 라벨 (밴드 위 = 플래트너 압력, 밴드 아래 = 스티프너 압력)
+    // 영역 라벨
     const lx=PAD.l+pw-6;
     ctx.font='10px -apple-system,system-ui,sans-serif';ctx.globalAlpha=dark?.5:.4;ctx.fillStyle=C.muted;
     ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText('플래트너 압력 ↑',lx,PAD.t+5);
     ctx.textBaseline='bottom';ctx.fillText('스티프너 압력 ↓',lx,PAD.t+ph-5);
     ctx.globalAlpha=1;
-    // 밴드 상·하단 현재값 표기 (우측 내부)
+    // 밴드 상·하단 현재값 (우측 끝)
     const lastU=upper.filter(v=>v!=null).at(-1),lastL=lower.filter(v=>v!=null).at(-1);
     if(lastU!=null&&lastL!=null){
-      ctx.font='10px -apple-system,system-ui,sans-serif';ctx.globalAlpha=dark?.8:.7;
-      ctx.fillStyle='#8e44ad';ctx.textAlign='right';
-      ctx.textBaseline='bottom';ctx.fillText(lastU.toFixed(1)+'bp',PAD.l+pw-4,toY(lastU)-1);
-      ctx.textBaseline='top';ctx.fillText(lastL.toFixed(1)+'bp',PAD.l+pw-4,toY(lastL)+1);
+      ctx.font='10px -apple-system,system-ui,sans-serif';ctx.globalAlpha=dark?.85:.72;ctx.fillStyle='#8e44ad';ctx.textAlign='right';
+      ctx.textBaseline='bottom';ctx.fillText(lastU.toFixed(1)+'bp',PAD.l+pw-4,toYL(lastU)-1);
+      ctx.textBaseline='top';ctx.fillText(lastL.toFixed(1)+'bp',PAD.l+pw-4,toYL(lastL)+1);
       ctx.globalAlpha=1;
     }
-    // y 그리드
-    const step=niceStep(yMax-yMin);
+    // 좌축 그리드
+    const step=niceStep(yLMax-yLMin);
     ctx.font='11px -apple-system,system-ui,sans-serif';
-    for(let yt=Math.ceil(yMin/step)*step;yt<=yMax+step*.01;yt+=step){
-      const cy=toY(yt);ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.globalAlpha=.35;ctx.setLineDash([]);
+    for(let yt=Math.ceil(yLMin/step)*step;yt<=yLMax+step*.01;yt+=step){
+      const cy=toYL(yt);ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.globalAlpha=.35;ctx.setLineDash([]);
       ctx.beginPath();ctx.moveTo(PAD.l,cy);ctx.lineTo(PAD.l+pw,cy);ctx.stroke();
       ctx.globalAlpha=1;ctx.fillStyle=C.muted;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(yt.toFixed(0)+'bp',PAD.l-4,cy);
+    }
+    // 우축 눈금 (기준금리)
+    const stepR=niceStep(yRMax-yRMin);
+    for(let yt=Math.ceil(yRMin/stepR)*stepR;yt<=yRMax+stepR*.01;yt+=stepR){
+      const cy=toYR(yt);ctx.globalAlpha=1;ctx.fillStyle='#e67e22';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(yt.toFixed(1)+'%',PAD.l+pw+4,cy);
     }
     // x축
     const tstep=Math.max(1,Math.round(n/8));
@@ -3297,20 +3312,28 @@ function makeCvBandRate(cvs,tt,dates,spread,fair,upper,lower){
     // 축 테두리
     ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.setLineDash([]);ctx.globalAlpha=1;
     ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,PAD.t+ph);ctx.lineTo(PAD.l+pw,PAD.t+ph);ctx.stroke();
+    ctx.strokeStyle='#e67e22';ctx.globalAlpha=.45;
+    ctx.beginPath();ctx.moveTo(PAD.l+pw,PAD.t);ctx.lineTo(PAD.l+pw,PAD.t+ph);ctx.stroke();
+    ctx.globalAlpha=1;
     // 0선
-    if(yMin<0&&yMax>0){const zy=toY(0);ctx.strokeStyle=C.muted;ctx.lineWidth=1;ctx.globalAlpha=.4;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(PAD.l,zy);ctx.lineTo(PAD.l+pw,zy);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}
+    if(yLMin<0&&yLMax>0){const zy=toYL(0);ctx.strokeStyle=C.muted;ctx.lineWidth=1;ctx.globalAlpha=.4;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(PAD.l,zy);ctx.lineTo(PAD.l+pw,zy);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}
     // OLS 적정값 점선
     ctx.save();ctx.strokeStyle=dark?'#bbb':'#999';ctx.lineWidth=1.2;ctx.globalAlpha=.7;ctx.setLineDash([5,5]);
     ctx.beginPath();let on=false;
-    for(let i=0;i<n;i++){if(fair[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toY(fair[i]));on=true;}else ctx.lineTo(toX(i),toY(fair[i]));}
+    for(let i=0;i<n;i++){if(fair[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toYL(fair[i]));on=true;}else ctx.lineTo(toX(i),toYL(fair[i]));}
     ctx.stroke();ctx.restore();
     // 스프레드 실선
     ctx.save();ctx.strokeStyle=dark?'#e0e0e0':'#333';ctx.lineWidth=1.8;ctx.lineJoin='round';ctx.setLineDash([]);
     ctx.beginPath();on=false;
-    for(let i=0;i<n;i++){if(spread[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toY(spread[i]));on=true;}else ctx.lineTo(toX(i),toY(spread[i]));}
+    for(let i=0;i<n;i++){if(spread[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toYL(spread[i]));on=true;}else ctx.lineTo(toX(i),toYL(spread[i]));}
+    ctx.stroke();ctx.restore();
+    // 기준금리 (우축)
+    ctx.save();ctx.strokeStyle='#e67e22';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.setLineDash([]);
+    ctx.beginPath();on=false;
+    for(let i=0;i<n;i++){if(baseRate[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toYR(baseRate[i]));on=true;}else ctx.lineTo(toX(i),toYR(baseRate[i]));}
     ctx.stroke();ctx.restore();
   }
-  function hit(mx){return Math.min(n-1,Math.max(0,Math.round((mx-PAD.l)/(state.W-PAD.l-PAD.r)*(n-1))));}
+  function hit(mx){return Math.min(n-1,Math.max(0,Math.round((mx-PAD.l)/(state.W-PAD.l-RPAD)*(n-1))));}
   cvs.addEventListener('mousemove',e=>{
     if(!state)return;
     const rect=cvs.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
@@ -3318,10 +3341,14 @@ function makeCvBandRate(cvs,tt,dates,spread,fair,upper,lower){
     tt.querySelector('.tt-d').textContent=dates[i];
     document.getElementById('tt-cv6-a').textContent=spread[i]!=null?spread[i].toFixed(1)+'bp':'—';
     document.getElementById('tt-cv6-b').textContent=fair[i]!=null?fair[i].toFixed(1)+'bp':'—';
-    let tx=mx+14,ty=my-55;if(tx+160>state.W-8)tx=mx-160-14;if(ty<4)ty=4;
+    document.getElementById('tt-cv6-up').textContent=upper[i]!=null?upper[i].toFixed(1)+'bp':'—';
+    document.getElementById('tt-cv6-dn').textContent=lower[i]!=null?lower[i].toFixed(1)+'bp':'—';
+    document.getElementById('tt-cv6-c').textContent=baseRate[i]!=null?baseRate[i].toFixed(2)+'%':'—';
+    let tx=mx+14,ty=my-95;if(tx+170>state.W-8)tx=mx-170-14;if(ty<4)ty=4;
     tt.style.left=tx+'px';tt.style.top=ty+'px';tt.classList.add('on');
     draw();const ctx=cvs.getContext('2d');ctx.scale(dpr,dpr);
-    if(spread[i]!=null){const cx=state.toX(i),cy=state.toY(spread[i]);ctx.save();ctx.fillStyle=cvIsDark()?'#ddd':'#333';ctx.strokeStyle=state.C.surface;ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
+    if(spread[i]!=null){const cx=state.toX(i),cy=state.toYL(spread[i]);ctx.save();ctx.fillStyle=cvIsDark()?'#ddd':'#333';ctx.strokeStyle=state.C.surface;ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
+    if(baseRate[i]!=null){const cx=state.toX(i),cy=state.toYR(baseRate[i]);ctx.save();ctx.fillStyle='#e67e22';ctx.strokeStyle=state.C.surface;ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
   });
   cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on');draw();});
   return draw;
@@ -3417,10 +3444,10 @@ function loadCurve(){
         ]
       );
 
-      // ⑥ 스프레드 + OLS 밴드
+      // ⑥ 스프레드 + OLS 밴드 + 기준금리
       CHARTS.cv6=makeCvBandRate(
         document.getElementById('cvs-cv6'),document.getElementById('tt-cv6'),
-        dates,DS.spread_bp,DS.fair_bp,DS.band_upper_bp,DS.band_lower_bp
+        dates,DS.spread_bp,DS.fair_bp,DS.band_upper_bp,DS.band_lower_bp,DS.base_rate
       );
 
       setTimeout(()=>{ ['cv1','cv2','cv3','cv4','cv5','cv6'].forEach(k=>CHARTS[k]&&CHARTS[k]()); },50);
