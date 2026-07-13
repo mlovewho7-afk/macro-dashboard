@@ -610,7 +610,7 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
     <!-- 차트 ⑥ 스프레드 + 신호 배경 -->
     <div class="card">
       <div class="card-hd">
-        <span class="card-title">⑥ 3/10년 스프레드 — 모델 신호 배경</span>
+        <span class="card-title">⑥ 3/10년 스프레드 + 기준금리 + OLS 밴드 (±1.5σ)</span>
         <div class="legend">
           <div class="leg"><div class="leg-line" style="background:#e74c3c;opacity:.5"></div>스티프너 구간</div>
           <div class="leg"><div class="leg-line" style="background:#3498db;opacity:.5"></div>플래트너 구간</div>
@@ -621,7 +621,8 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
         <div class="tt" id="tt-cv6">
           <div class="tt-d" id="tt-cv6-d">—</div>
           <div class="tt-row"><span class="tt-lbl">스프레드</span><span class="tt-num" id="tt-cv6-a">—</span></div>
-          <div class="tt-row"><span class="tt-lbl">신호</span><span class="tt-num" id="tt-cv6-r">—</span></div>
+          <div class="tt-row"><span class="tt-lbl">OLS 적정값</span><span class="tt-num" id="tt-cv6-b">—</span></div>
+          <div class="tt-row"><span class="tt-lbl" style="color:#e67e22">기준금리</span><span class="tt-num" id="tt-cv6-c">—</span></div>
         </div>
       </div>
     </div>
@@ -3244,61 +3245,90 @@ function makeCvBar(cvs,tt,dates,vals,colorFn,refLines,ttIds,yFmtFn){
   return draw;
 }
 
-// 스프레드 + 신호 배경 (cv6)
-function makeCvSignalSpread(cvs,tt,dates,spread,scores,threshold){
+// 스프레드 + 기준금리 + OLS 밴드 (cv6)
+function makeCvBandRate(cvs,tt,dates,spread,fair,upper,lower,baseRate){
   const n=dates.length;
-  const allV=spread.filter(v=>v!=null);
-  const yMin=-8,yMax=Math.max(105,...allV);
+  const RPAD=46;
+  const allBp=[...spread,...fair,...upper,...lower].filter(v=>v!=null);
+  const bpMin=Math.min(...allBp),bpMax=Math.max(...allBp);
+  const bpPad=(bpMax-bpMin)*.10||5;
+  const yLMin=bpMin-bpPad,yLMax=bpMax+bpPad;
+  const allR=baseRate.filter(v=>v!=null);
+  const rMin=Math.min(...allR),rMax=Math.max(...allR);
+  const rPad=(rMax-rMin)*.18||0.5;
+  const yRMin=rMin-rPad,yRMax=rMax+rPad;
   let state=null;
   function draw(){
-    const W=cvs.parentElement.clientWidth,H=Math.round(W*.28);
+    const W=cvs.parentElement.clientWidth,H=Math.round(W*.30);
     cvs.width=W*dpr;cvs.height=H*dpr;cvs.style.height=H+'px';
     const ctx=cvs.getContext('2d');ctx.scale(dpr,dpr);
-    const pw=W-PAD.l-PAD.r,ph=H-PAD.t-PAD.b;
+    const pw=W-PAD.l-RPAD,ph=H-PAD.t-PAD.b;
     const C=getC();const dark=cvIsDark();
     const toX=i=>PAD.l+i/(n-1)*pw;
-    const toY=v=>PAD.t+(1-(v-yMin)/(yMax-yMin))*ph;
-    state={toX,toY,C,W,H,n};
-    // signal bg
-    const a=dark?.22:.16;
-    for(let i=0;i<n-1;i++){const s=scores[i];if(s==null)continue;ctx.fillStyle=s>threshold?`rgba(231,76,60,${a})`:s<-threshold?`rgba(52,152,219,${a})`:`rgba(150,150,150,${dark?.13:.09})`;ctx.fillRect(toX(i),PAD.t,toX(i+1)-toX(i),ph);}
-    const step=niceStep(yMax-yMin);
+    const toYL=v=>PAD.t+(1-(v-yLMin)/(yLMax-yLMin))*ph;
+    const toYR=v=>PAD.t+(1-(v-yRMin)/(yRMax-yRMin))*ph;
+    state={toX,toYL,toYR,C,W,H,n};
+    // OLS 밴드 채우기
+    ctx.save();ctx.globalAlpha=dark?.13:.10;ctx.fillStyle='#8e44ad';
+    ctx.beginPath();let fst=false;
+    for(let i=0;i<n;i++){if(upper[i]==null)continue;if(!fst){ctx.moveTo(toX(i),toYL(upper[i]));fst=true;}else ctx.lineTo(toX(i),toYL(upper[i]));}
+    for(let i=n-1;i>=0;i--){if(lower[i]!=null)ctx.lineTo(toX(i),toYL(lower[i]));}
+    ctx.closePath();ctx.fill();ctx.restore();
+    // 좌축 그리드
+    const step=niceStep(yLMax-yLMin);
     ctx.font='11px -apple-system,system-ui,sans-serif';
-    for(let yt=Math.ceil(yMin/step)*step;yt<=yMax+step*.01;yt+=step){
-      const cy=toY(yt);ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.globalAlpha=.35;ctx.setLineDash([]);
+    for(let yt=Math.ceil(yLMin/step)*step;yt<=yLMax+step*.01;yt+=step){
+      const cy=toYL(yt);ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.globalAlpha=.35;ctx.setLineDash([]);
       ctx.beginPath();ctx.moveTo(PAD.l,cy);ctx.lineTo(PAD.l+pw,cy);ctx.stroke();
-      ctx.globalAlpha=1;ctx.fillStyle=C.muted;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(yt.toFixed(0)+'bp',PAD.l-5,cy);
+      ctx.globalAlpha=1;ctx.fillStyle=C.muted;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(yt.toFixed(0)+'bp',PAD.l-4,cy);
     }
+    // 우축 눈금
+    const stepR=niceStep(yRMax-yRMin);
+    for(let yt=Math.ceil(yRMin/stepR)*stepR;yt<=yRMax+stepR*.01;yt+=stepR){
+      const cy=toYR(yt);ctx.globalAlpha=1;ctx.fillStyle='#e67e22';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(yt.toFixed(1)+'%',PAD.l+pw+4,cy);
+    }
+    // x축
     const tstep=Math.max(1,Math.round(n/8));
     ctx.textBaseline='top';ctx.textAlign='center';ctx.fillStyle=C.muted;
     for(let i=0;i<n;i+=tstep){ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.globalAlpha=.2;ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(toX(i),PAD.t);ctx.lineTo(toX(i),PAD.t+ph);ctx.stroke();ctx.globalAlpha=1;ctx.fillText(dates[i].slice(0,7),toX(i),PAD.t+ph+7);}
+    // 축 테두리
     ctx.strokeStyle=C.border;ctx.lineWidth=1;ctx.setLineDash([]);ctx.globalAlpha=1;
     ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,PAD.t+ph);ctx.lineTo(PAD.l+pw,PAD.t+ph);ctx.stroke();
-    const zy=toY(0);ctx.strokeStyle=C.muted;ctx.lineWidth=1;ctx.globalAlpha=.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(PAD.l,zy);ctx.lineTo(PAD.l+pw,zy);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
-    // fill+line
-    ctx.save();ctx.globalAlpha=.15;ctx.fillStyle='#555555';
-    ctx.beginPath();let fst=false;
-    for(let i=0;i<n;i++){if(spread[i]==null)continue;if(!fst){ctx.moveTo(toX(i),zy);ctx.lineTo(toX(i),toY(spread[i]));fst=true;}else ctx.lineTo(toX(i),toY(spread[i]));}
-    for(let i=n-1;i>=0;i--){if(spread[i]!=null)ctx.lineTo(toX(i),zy);}
-    ctx.closePath();ctx.fill();ctx.restore();
-    ctx.save();ctx.strokeStyle='#555555';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.setLineDash([]);
+    ctx.strokeStyle='#e67e22';ctx.globalAlpha=.45;
+    ctx.beginPath();ctx.moveTo(PAD.l+pw,PAD.t);ctx.lineTo(PAD.l+pw,PAD.t+ph);ctx.stroke();
+    ctx.globalAlpha=1;
+    // 0선 (좌축)
+    if(yLMin<0&&yLMax>0){const zy=toYL(0);ctx.strokeStyle=C.muted;ctx.lineWidth=1;ctx.globalAlpha=.4;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(PAD.l,zy);ctx.lineTo(PAD.l+pw,zy);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}
+    // OLS 적정값 점선
+    ctx.save();ctx.strokeStyle=dark?'#bbb':'#999';ctx.lineWidth=1.2;ctx.globalAlpha=.7;ctx.setLineDash([5,5]);
     ctx.beginPath();let on=false;
-    for(let i=0;i<n;i++){if(spread[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toY(spread[i]));on=true;}else ctx.lineTo(toX(i),toY(spread[i]));}
+    for(let i=0;i<n;i++){if(fair[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toYL(fair[i]));on=true;}else ctx.lineTo(toX(i),toYL(fair[i]));}
+    ctx.stroke();ctx.restore();
+    // 스프레드 실선
+    ctx.save();ctx.strokeStyle=dark?'#e0e0e0':'#333';ctx.lineWidth=1.8;ctx.lineJoin='round';ctx.setLineDash([]);
+    ctx.beginPath();on=false;
+    for(let i=0;i<n;i++){if(spread[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toYL(spread[i]));on=true;}else ctx.lineTo(toX(i),toYL(spread[i]));}
+    ctx.stroke();ctx.restore();
+    // 기준금리 (우축)
+    ctx.save();ctx.strokeStyle='#e67e22';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.setLineDash([]);
+    ctx.beginPath();on=false;
+    for(let i=0;i<n;i++){if(baseRate[i]==null){on=false;continue;}if(!on){ctx.moveTo(toX(i),toYR(baseRate[i]));on=true;}else ctx.lineTo(toX(i),toYR(baseRate[i]));}
     ctx.stroke();ctx.restore();
   }
-  function hit(mx){return Math.min(n-1,Math.max(0,Math.round((mx-PAD.l)/(state.W-PAD.l-PAD.r)*(n-1))));}
+  function hit(mx){return Math.min(n-1,Math.max(0,Math.round((mx-PAD.l)/(state.W-PAD.l-RPAD)*(n-1))));}
   cvs.addEventListener('mousemove',e=>{
     if(!state)return;
     const rect=cvs.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
     const i=hit(mx);
     tt.querySelector('.tt-d').textContent=dates[i];
     document.getElementById('tt-cv6-a').textContent=spread[i]!=null?spread[i].toFixed(1)+'bp':'—';
-    const s=scores[i];const sig=s!=null?(s>threshold?'스티프너':s<-threshold?'플래트너':'중립'):'—';
-    document.getElementById('tt-cv6-r').textContent=sig;
-    let tx=mx+14,ty=my-44;if(tx+160>state.W-8)tx=mx-160-14;if(ty<4)ty=4;
+    document.getElementById('tt-cv6-b').textContent=fair[i]!=null?fair[i].toFixed(1)+'bp':'—';
+    document.getElementById('tt-cv6-c').textContent=baseRate[i]!=null?baseRate[i].toFixed(2)+'%':'—';
+    let tx=mx+14,ty=my-70;if(tx+170>state.W-8)tx=mx-170-14;if(ty<4)ty=4;
     tt.style.left=tx+'px';tt.style.top=ty+'px';tt.classList.add('on');
     draw();const ctx=cvs.getContext('2d');ctx.scale(dpr,dpr);
-    if(spread[i]!=null){const cx=state.toX(i),cy=state.toY(spread[i]);ctx.save();ctx.fillStyle='#555555';ctx.strokeStyle=state.C.surface;ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
+    if(spread[i]!=null){const cx=state.toX(i),cy=state.toYL(spread[i]);ctx.save();ctx.fillStyle=cvIsDark()?'#ddd':'#333';ctx.strokeStyle=state.C.surface;ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
+    if(baseRate[i]!=null){const cx=state.toX(i),cy=state.toYR(baseRate[i]);ctx.save();ctx.fillStyle='#e67e22';ctx.strokeStyle=state.C.surface;ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}
   });
   cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on');draw();});
   return draw;
@@ -3394,10 +3424,10 @@ function loadCurve(){
         ]
       );
 
-      // ⑥ 스프레드 + 신호배경
-      CHARTS.cv6=makeCvSignalSpread(
+      // ⑥ 스프레드 + 기준금리 + OLS 밴드
+      CHARTS.cv6=makeCvBandRate(
         document.getElementById('cvs-cv6'),document.getElementById('tt-cv6'),
-        dates,DS.spread_bp,DS.score,THR
+        dates,DS.spread_bp,DS.fair_bp,DS.band_upper_bp,DS.band_lower_bp,DS.base_rate
       );
 
       setTimeout(()=>{ ['cv1','cv2','cv3','cv4','cv5','cv6'].forEach(k=>CHARTS[k]&&CHARTS[k]()); },50);
