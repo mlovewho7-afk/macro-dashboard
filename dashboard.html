@@ -3267,6 +3267,12 @@ function makeCvBandRate(cvs,tt,dates,spread,fair,upper,lower){
     for(let i=0;i<n;i++){if(upper[i]==null)continue;if(!fst){ctx.moveTo(toX(i),toY(upper[i]));fst=true;}else ctx.lineTo(toX(i),toY(upper[i]));}
     for(let i=n-1;i>=0;i--){if(lower[i]!=null)ctx.lineTo(toX(i),toY(lower[i]));}
     ctx.closePath();ctx.fill();ctx.restore();
+    // 영역 라벨 (밴드 위 = 플래트너 압력, 밴드 아래 = 스티프너 압력)
+    const lx=PAD.l+pw-6;
+    ctx.font='10px -apple-system,system-ui,sans-serif';ctx.globalAlpha=dark?.5:.4;ctx.fillStyle=C.muted;
+    ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText('플래트너 압력 ↑',lx,PAD.t+5);
+    ctx.textBaseline='bottom';ctx.fillText('스티프너 압력 ↓',lx,PAD.t+ph-5);
+    ctx.globalAlpha=1;
     // y 그리드
     const step=niceStep(yMax-yMin);
     ctx.font='11px -apple-system,system-ui,sans-serif';
