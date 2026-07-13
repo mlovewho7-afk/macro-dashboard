@@ -3399,6 +3399,8 @@ function loadCurve(){
         document.getElementById('cvs-cv6'),document.getElementById('tt-cv6'),
         dates,DS.spread_bp,DS.score,THR
       );
+
+      setTimeout(()=>{ ['cv1','cv2','cv3','cv4','cv5','cv6'].forEach(k=>CHARTS[k]&&CHARTS[k]()); },50);
     })
     .catch(()=>{
       document.getElementById('curve-loading').textContent='데이터 없음 — curve_strategy_3y10y.py 실행 후 push 필요';
