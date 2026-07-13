@@ -2535,6 +2535,22 @@ function loadRepo(){
             ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([4,3]);
             ctx.beginPath(); ctx.moveTo(hx,PADR.t); ctx.lineTo(hx,PADR.t+ph); ctx.stroke();
             ctx.restore();
+            series.forEach(s=>{
+              const v = s.vals[hoverIdx]; if(v==null) return;
+              const cy = toY(v);
+              ctx.save();
+              ctx.strokeStyle=s.color(); ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([4,3]);
+              ctx.beginPath(); ctx.moveTo(PADR.l,cy); ctx.lineTo(PADR.l+pw,cy); ctx.stroke();
+              ctx.restore();
+            });
+            const rv = rateVals[hoverIdx];
+            if(rv!=null){
+              const cy = toYR(rv);
+              ctx.save();
+              ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.35; ctx.setLineDash([2,3]);
+              ctx.beginPath(); ctx.moveTo(PADR.l,cy); ctx.lineTo(PADR.l+pw,cy); ctx.stroke();
+              ctx.restore();
+            }
           }
 
           const lastI = n-1;
@@ -2721,6 +2737,14 @@ function loadRepo(){
             ctx.strokeStyle=C.muted; ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([4,3]);
             ctx.beginPath(); ctx.moveTo(hx,PADR.t); ctx.lineTo(hx,PADR.t+ph); ctx.stroke();
             ctx.restore();
+            series.forEach(s=>{
+              const v = s.vals[hoverIdx]; if(v==null) return;
+              const cy = toY(v);
+              ctx.save();
+              ctx.strokeStyle=s.color(); ctx.lineWidth=1; ctx.globalAlpha=.4; ctx.setLineDash([4,3]);
+              ctx.beginPath(); ctx.moveTo(PADR.l,cy); ctx.lineTo(PADR.l+pw,cy); ctx.stroke();
+              ctx.restore();
+            });
           }
 
           const lastI = n-1;
