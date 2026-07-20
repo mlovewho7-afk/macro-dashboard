@@ -353,7 +353,12 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
   <div id="curve-content" style="display:none">
 
     <!-- 타일: 현재 신호 -->
-    <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+    <div class="tiles" style="grid-template-columns:repeat(5,1fr)">
+      <div class="tile">
+        <div class="t-label">기준일자</div>
+        <div class="t-val" id="cv-date" style="font-size:1.1rem">—</div>
+        <div class="t-sub">데이터 최신일</div>
+      </div>
       <div class="tile">
         <div class="t-label">현재 신호</div>
         <div class="t-val" id="cv-signal">—</div>
@@ -3557,8 +3562,9 @@ function loadCurve(){
       sigEl.textContent=sig;
       sigEl.style.color=sig==='스티프너'?C0.emerald:sig==='플래트너'?C0.crimson:C0.muted;
       document.getElementById('cv-score-sub').textContent='스코어: '+(cur.score>=0?'+':'')+cur.score.toFixed(3);
+      document.getElementById('cv-date').textContent=cur.date||'—';
       document.getElementById('cv-spread').textContent=cur.spread_bp.toFixed(1)+'bp';
-      document.getElementById('cv-spread-sub').textContent='기준 '+(cur.date||'—')+' | 적정 '+cur.fair_value_bp.toFixed(1)+'bp';
+      document.getElementById('cv-spread-sub').textContent='적정 '+cur.fair_value_bp.toFixed(1)+'bp (OLS)';
       const czEl=document.getElementById('cv-cycle');
       czEl.textContent=(cur.z_cycle>=0?'+':'')+cur.z_cycle.toFixed(2);
       czEl.style.color=cur.z_cycle<0?C0.crimson:C0.emerald;
