@@ -3558,7 +3558,7 @@ function loadCurve(){
       sigEl.style.color=sig==='스티프너'?C0.emerald:sig==='플래트너'?C0.crimson:C0.muted;
       document.getElementById('cv-score-sub').textContent='스코어: '+(cur.score>=0?'+':'')+cur.score.toFixed(3);
       document.getElementById('cv-spread').textContent=cur.spread_bp.toFixed(1)+'bp';
-      document.getElementById('cv-spread-sub').textContent='적정 '+cur.fair_value_bp.toFixed(1)+'bp (OLS)';
+      document.getElementById('cv-spread-sub').textContent='기준 '+(cur.date||'—')+' | 적정 '+cur.fair_value_bp.toFixed(1)+'bp';
       const czEl=document.getElementById('cv-cycle');
       czEl.textContent=(cur.z_cycle>=0?'+':'')+cur.z_cycle.toFixed(2);
       czEl.style.color=cur.z_cycle<0?C0.crimson:C0.emerald;
