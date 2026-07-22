@@ -115,6 +115,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .leg-line{width:18px;height:2px;border-radius:1px}
 .leg-dia{width:8px;height:8px;transform:rotate(45deg);border-radius:1px}
 .leg-dash{width:18px;height:0;border-top:2px dashed;border-radius:0}
+.leg-bar{width:10px;height:12px;border-radius:2px}
 .chart-wrap{position:relative}
 canvas{display:block;width:100%;cursor:crosshair}
 
@@ -275,8 +276,8 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
     <div class="card-hd">
       <span class="card-title">CPI MoM (%) — 실제 vs 모델</span>
       <div class="legend">
-        <div class="leg"><div class="leg-line" style="background:var(--amber);height:2.5px"></div>실제</div>
-        <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>모델</div>
+        <div class="leg"><div class="leg-bar" style="background:var(--amber)"></div>실제</div>
+        <div class="leg"><div class="leg-bar" style="background:var(--blue);opacity:.7"></div>모델</div>
         <div class="leg"><div class="leg-dia" style="background:var(--emerald)"></div>7월 예측</div>
         <div class="leg"><div class="leg-dia" style="background:var(--violet)"></div>8월 예측</div>
       </div>
@@ -333,8 +334,8 @@ if (localStorage.getItem('ultra_gate_ok') !== '1') {
     <div class="card-hd">
       <span class="card-title">GDP QoQ (%) — 실제(계절조정) vs 모델 (분기)</span>
       <div class="legend">
-        <div class="leg"><div class="leg-line" style="background:var(--amber);height:2.5px"></div>실제 (BOK SA)</div>
-        <div class="leg"><div class="leg-line" style="background:var(--blue)"></div>모델</div>
+        <div class="leg"><div class="leg-bar" style="background:var(--amber)"></div>실제 (BOK SA)</div>
+        <div class="leg"><div class="leg-bar" style="background:var(--blue);opacity:.7"></div>모델</div>
         <div class="leg"><div class="leg-dia" style="background:var(--emerald)"></div>Q3 2026 예측</div>
       </div>
     </div>
@@ -1354,7 +1355,7 @@ function makeChart(cvs, tt, dates, actual, fitted, opts={}){
   return draw;
 }
 
-// ── Bar chart (MoM/QoQ — 실제 막대 + 모델 선) ────────────────────────────
+// ── Bar chart (MoM/QoQ — 실제 막대 + 모델 막대 나란히) ───────────────────
 function makeBarChart(cvs, tt, dates, actual, fitted, opts={}){
   const xVals=dates.map(toDecY); const n=dates.length;
   const fcStr  = opts.fc !=null ? (opts.fc_date  || nextM (dates[n-1])) : null;
@@ -1369,8 +1370,17 @@ function makeBarChart(cvs, tt, dates, actual, fitted, opts={}){
   const yMin=Math.floor(Math.min(...allV))-.3, yMax=Math.ceil(Math.max(...allV))+.3;
   let state=null;
 
+  function drawBar(ctx,cx,val,barW,color,alpha){
+    if(val==null) return;
+    const zero=state.toY(0);
+    ctx.fillStyle=color; ctx.globalAlpha=alpha;
+    const top=val>=0?state.toY(val):zero, h=Math.max(1,Math.abs(state.toY(val)-zero));
+    ctx.fillRect(cx-barW/2,top,barW,h);
+    ctx.globalAlpha=1;
+  }
+
   function draw(){
-    const W=cvs.parentElement.clientWidth, H=Math.round(W*.36);
+    const W=cvs.parentElement.clientWidth, H=Math.round(W*.38);
     cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
     const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
     const pw=W-PAD.l-PAD.r, ph=H-PAD.t-PAD.b;
@@ -1403,36 +1413,20 @@ function makeBarChart(cvs, tt, dates, actual, fitted, opts={}){
     ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.setLineDash([]); ctx.globalAlpha=1;
     ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,PAD.t+ph); ctx.lineTo(PAD.l+pw,PAD.t+ph); ctx.stroke();
 
-    // 막대 너비: 데이터 간격의 55%
-    const barW=n>1?Math.max(2,(toX(xVals[1])-toX(xVals[0]))*.55):6;
+    // 막대 1개 너비: 슬롯의 38%, 2개 합쳐 76% + 가운데 2px 간격
+    const slot=n>1?(toX(xVals[1])-toX(xVals[0])):20;
+    const barW=Math.max(2,slot*.38);
+    const gap=Math.max(1,slot*.03);
 
-    // 실제값 막대
     for(let i=0;i<n;i++){
-      if(actual[i]==null) continue;
       const cx=toX(xVals[i]);
-      const cy=toY(actual[i]);
-      ctx.fillStyle=actual[i]>=0?C.amber:C.crimson;
-      ctx.globalAlpha=.72;
-      const top=actual[i]>=0?cy:zero, h=Math.max(1,Math.abs(cy-zero));
-      ctx.fillRect(cx-barW/2,top,barW,h);
+      // 실제 (amber/crimson) — 왼쪽
+      drawBar(ctx, cx-(barW/2+gap/2), actual[i], barW, actual[i]!=null&&actual[i]>=0?C.amber:C.crimson, .78);
+      // 모델 (blue) — 오른쪽
+      drawBar(ctx, cx+(barW/2+gap/2), fitted[i], barW, C.blue, .65);
     }
-    ctx.globalAlpha=1;
 
-    // 모델 적합선
-    function line(xs,ys,color,lw,alpha){
-      ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=lw;
-      ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=alpha; ctx.setLineDash([]);
-      ctx.beginPath(); let on=false;
-      for(let i=0;i<xs.length;i++){
-        if(ys[i]==null){on=false;continue;}
-        const cx=toX(xs[i]),cy=toY(ys[i]);
-        if(!on){ctx.moveTo(cx,cy);on=true;}else ctx.lineTo(cx,cy);
-      }
-      ctx.stroke(); ctx.restore();
-    }
-    line(xVals,fitted,C.blue,1.6,.88);
-
-    // 예측 다이아몬드
+    // 예측 다이아몬드 (실제 기준 위치에서)
     function diamond(fromX,fromY,toDecX,val,color,labelPos){
       const fcx=toX(toDecX),fcy=toY(val);
       ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.globalAlpha=.6;
@@ -1476,14 +1470,6 @@ function makeBarChart(cvs, tt, dates, actual, fitted, opts={}){
     if(tx+ttW>state.W-8) tx=mx-ttW-14;
     if(ty<4) ty=4;
     tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
-    draw();
-    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
-    if(fitted[i]!=null){
-      ctx.save(); ctx.fillStyle=state.C.blue; ctx.strokeStyle=state.C.surface;
-      ctx.lineWidth=2; ctx.setLineDash([]); ctx.beginPath();
-      ctx.arc(state.toX(xVals[i]),state.toY(fitted[i]),4,0,Math.PI*2);
-      ctx.fill(); ctx.stroke(); ctx.restore();
-    }
   });
   cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on'); draw();});
   return draw;
