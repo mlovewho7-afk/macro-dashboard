@@ -1354,6 +1354,141 @@ function makeChart(cvs, tt, dates, actual, fitted, opts={}){
   return draw;
 }
 
+// ── Bar chart (MoM/QoQ — 실제 막대 + 모델 선) ────────────────────────────
+function makeBarChart(cvs, tt, dates, actual, fitted, opts={}){
+  const xVals=dates.map(toDecY); const n=dates.length;
+  const fcStr  = opts.fc !=null ? (opts.fc_date  || nextM (dates[n-1])) : null;
+  const fcDecY = fcStr  ? toDecY(fcStr)  : null;
+  const fc2Str = opts.fc2!=null ? (opts.fc2_date || nextM2(dates[n-1])) : null;
+  const fc2DecY= fc2Str ? toDecY(fc2Str) : null;
+  const resid  = actual.map((a,i)=>a!=null&&fitted[i]!=null?+((a-fitted[i]).toFixed(2)):null);
+
+  const allV=[...actual.filter(v=>v!=null),...fitted.filter(v=>v!=null),0];
+  if(opts.fc !=null) allV.push(opts.fc);
+  if(opts.fc2!=null) allV.push(opts.fc2);
+  const yMin=Math.floor(Math.min(...allV))-.3, yMax=Math.ceil(Math.max(...allV))+.3;
+  let state=null;
+
+  function draw(){
+    const W=cvs.parentElement.clientWidth, H=Math.round(W*.36);
+    cvs.width=W*dpr; cvs.height=H*dpr; cvs.style.height=H+'px';
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    const pw=W-PAD.l-PAD.r, ph=H-PAD.t-PAD.b;
+    const xMin=xVals[0]-.2, xMax=(fc2DecY||fcDecY||xVals[n-1])+.6;
+    const C=getC();
+    const toX=x=>PAD.l+(x-xMin)/(xMax-xMin)*pw;
+    const toY=y=>PAD.t+(1-(y-yMin)/(yMax-yMin))*ph;
+    state={toX,toY,C,W,H};
+    const zero=toY(0);
+
+    // y 그리드
+    for(let yt=Math.ceil(yMin);yt<=yMax;yt++){
+      const cy=toY(yt);
+      ctx.strokeStyle=C.border; ctx.lineWidth=yt===0?1.5:1; ctx.setLineDash([]);
+      ctx.globalAlpha=yt===0?.65:.35; ctx.beginPath();
+      ctx.moveTo(PAD.l,cy); ctx.lineTo(PAD.l+pw,cy); ctx.stroke();
+      ctx.globalAlpha=1; ctx.fillStyle=C.muted;
+      ctx.font='11px -apple-system,system-ui,sans-serif';
+      ctx.textAlign='right'; ctx.textBaseline='middle';
+      ctx.fillText(yt.toFixed(0)+'%',PAD.l-5,cy);
+    }
+    // x 그리드
+    ctx.textBaseline='top'; ctx.textAlign='center';
+    for(let yr=Math.ceil(xVals[0]);yr<=Math.floor(xMax);yr+=2){
+      const cx=toX(yr);
+      ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.globalAlpha=.2; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(cx,PAD.t); ctx.lineTo(cx,PAD.t+ph); ctx.stroke();
+      ctx.globalAlpha=1; ctx.fillStyle=C.muted; ctx.fillText(yr,cx,PAD.t+ph+7);
+    }
+    ctx.strokeStyle=C.border; ctx.lineWidth=1; ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,PAD.t+ph); ctx.lineTo(PAD.l+pw,PAD.t+ph); ctx.stroke();
+
+    // 막대 너비: 데이터 간격의 55%
+    const barW=n>1?Math.max(2,(toX(xVals[1])-toX(xVals[0]))*.55):6;
+
+    // 실제값 막대
+    for(let i=0;i<n;i++){
+      if(actual[i]==null) continue;
+      const cx=toX(xVals[i]);
+      const cy=toY(actual[i]);
+      ctx.fillStyle=actual[i]>=0?C.amber:C.crimson;
+      ctx.globalAlpha=.72;
+      const top=actual[i]>=0?cy:zero, h=Math.max(1,Math.abs(cy-zero));
+      ctx.fillRect(cx-barW/2,top,barW,h);
+    }
+    ctx.globalAlpha=1;
+
+    // 모델 적합선
+    function line(xs,ys,color,lw,alpha){
+      ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=lw;
+      ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalAlpha=alpha; ctx.setLineDash([]);
+      ctx.beginPath(); let on=false;
+      for(let i=0;i<xs.length;i++){
+        if(ys[i]==null){on=false;continue;}
+        const cx=toX(xs[i]),cy=toY(ys[i]);
+        if(!on){ctx.moveTo(cx,cy);on=true;}else ctx.lineTo(cx,cy);
+      }
+      ctx.stroke(); ctx.restore();
+    }
+    line(xVals,fitted,C.blue,1.6,.88);
+
+    // 예측 다이아몬드
+    function diamond(fromX,fromY,toDecX,val,color,labelPos){
+      const fcx=toX(toDecX),fcy=toY(val);
+      ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.globalAlpha=.6;
+      ctx.beginPath(); ctx.moveTo(fromX,fromY); ctx.lineTo(fcx,fcy); ctx.stroke(); ctx.restore();
+      const ds=6;
+      ctx.save(); ctx.fillStyle=color; ctx.strokeStyle=C.surface; ctx.lineWidth=2; ctx.setLineDash([]); ctx.globalAlpha=.9;
+      ctx.beginPath(); ctx.moveTo(fcx,fcy-ds); ctx.lineTo(fcx+ds,fcy); ctx.lineTo(fcx,fcy+ds); ctx.lineTo(fcx-ds,fcy); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.font='bold 10.5px -apple-system,system-ui,sans-serif';
+      ctx.fillStyle=color; ctx.textAlign='center';
+      if(labelPos==='above'){ctx.textBaseline='bottom'; ctx.fillText(val.toFixed(2)+'%',fcx,fcy-ds-3);}
+      else                  {ctx.textBaseline='top';    ctx.fillText(val.toFixed(2)+'%',fcx,fcy+ds+3);}
+      ctx.restore();
+    }
+    if(fcDecY!=null&&opts.fc!=null)
+      diamond(toX(xVals[n-1]),zero,fcDecY,opts.fc,C.emerald,'above');
+    if(fc2DecY!=null&&opts.fc2!=null){
+      const fromX=fcDecY!=null?toX(fcDecY):toX(xVals[n-1]);
+      const fromY=fcDecY!=null?toY(opts.fc):zero;
+      diamond(fromX,fromY,fc2DecY,opts.fc2,C.violet,'below');
+    }
+  }
+
+  function hit(mx){let bi=-1,bd=Infinity;for(let i=0;i<n;i++){const d=Math.abs(state.toX(xVals[i])-mx);if(d<bd){bd=d;bi=i;}}return bd<40?bi:-1;}
+
+  cvs.addEventListener('mousemove',e=>{
+    if(!state) return;
+    const rect=cvs.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const i=hit(mx);
+    if(i<0){tt.classList.remove('on'); draw(); return;}
+    tt.querySelector('.tt-d').textContent=dates[i];
+    tt.querySelectorAll('.tt-num')[0].textContent=pct(actual[i]);
+    tt.querySelectorAll('.tt-num')[1].textContent=pct(fitted[i]);
+    const r=resid[i];
+    const rEl=tt.querySelectorAll('.tt-num')[2];
+    rEl.textContent=r!=null?pp(r):'—';
+    rEl.style.color=r!=null?(r>=0?state.C.emerald:state.C.crimson):state.C.muted;
+    const ttW=158,ttH=108;
+    let tx=mx+14,ty=my-54;
+    if(tx+ttW>state.W-8) tx=mx-ttW-14;
+    if(ty<4) ty=4;
+    tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.classList.add('on');
+    draw();
+    const ctx=cvs.getContext('2d'); ctx.scale(dpr,dpr);
+    if(fitted[i]!=null){
+      ctx.save(); ctx.fillStyle=state.C.blue; ctx.strokeStyle=state.C.surface;
+      ctx.lineWidth=2; ctx.setLineDash([]); ctx.beginPath();
+      ctx.arc(state.toX(xVals[i]),state.toY(fitted[i]),4,0,Math.PI*2);
+      ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+  });
+  cvs.addEventListener('mouseleave',()=>{tt.classList.remove('on'); draw();});
+  return draw;
+}
+
 // ── Rate chart (기준금리 실제 vs Taylor 준칙, KGB3Y 보조) ─────────────────
 function makeRateChart(cvs, tt, dates, actual, fitted, fc, fc2, kgb3y){
   const xVals=dates.map(toDecY); const n=dates.length;
@@ -3836,10 +3971,10 @@ CHARTS.cpi  = makeChart(document.getElementById('cvs-cpi'),  document.getElement
   D.cpi.dates, D.cpi.actual, D.cpi.fitted, {fc:D.cpi.fc, fc2:D.cpi.fc2, target:D.cpi.target});
 CHARTS.gdp  = makeChart(document.getElementById('cvs-gdp'),  document.getElementById('tt-gdp'),
   D.gdp.dates, D.gdp.actual, D.gdp.fitted, {fc:D.gdp.fc, fc2:D.gdp.fc2});
-CHARTS['cpi-mom'] = makeChart(document.getElementById('cvs-cpi-mom'), document.getElementById('tt-cpi-mom'),
+CHARTS['cpi-mom'] = makeBarChart(document.getElementById('cvs-cpi-mom'), document.getElementById('tt-cpi-mom'),
   D.cpi.mom.dates, D.cpi.mom.actual, D.cpi.mom.fitted,
   {fc: D.cpi.mom.fc_mom, fc2: D.cpi.mom.fc2_mom});
-CHARTS['gdp-qoq'] = makeChart(document.getElementById('cvs-gdp-qoq'), document.getElementById('tt-gdp-qoq'),
+CHARTS['gdp-qoq'] = makeBarChart(document.getElementById('cvs-gdp-qoq'), document.getElementById('tt-gdp-qoq'),
   D.gdp.qoq.dates, D.gdp.qoq.actual_qoq, D.gdp.qoq.model_qoq,
   {fc: D.gdp.qoq.fc_qoq, fc_date: '2026-09'});
 CHARTS.rate = makeRateChart(document.getElementById('cvs-rate'), document.getElementById('tt-rate'),
