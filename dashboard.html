@@ -3584,15 +3584,6 @@ function loadRepo(){
             ctx.beginPath(); ctx.arc(cx,cy,s.isBase?3.5:4,0,Math.PI*2); ctx.fill(); ctx.stroke();
             ctx.restore();
           });
-          const curLabels = series.map(s=>({ y: toY(s.vals[lastI]), text:s.vals[lastI].toFixed(2)+'%', color:s.color(), v:s.vals[lastI] }))
-            .filter(l=>l.v!=null);
-          declutter(curLabels, 16).forEach(l=>{
-            ctx.save();
-            ctx.font='bold 10.5px -apple-system,system-ui,sans-serif';
-            ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
-            ctx.fillText(l.text, toX(lastI)+8, l.y);
-            ctx.restore();
-          });
         }
 
         function hit(mx){
