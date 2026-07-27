@@ -3390,24 +3390,12 @@ function loadRepo(){
             ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fill(); ctx.stroke();
             ctx.restore();
           });
-          const curLabels = series.map(s=>({ y: toY(s.vals[lastI]), text:(s.vals[lastI]>=0?'+':'')+(s.vals[lastI]??0).toFixed(0)+'bp', color:s.color(), v:s.vals[lastI] }))
-            .filter(l=>l.v!=null);
-          declutter(curLabels, 13).forEach(l=>{
-            ctx.save();
-            ctx.font='bold 10.5px -apple-system,system-ui,sans-serif';
-            ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
-            ctx.fillText(l.text, toX(lastI)+8, l.y);
-            ctx.restore();
-          });
           const rLast = rateVals[lastI];
           if(rLast!=null){
             const cx=toX(lastI), cy=toYR(rLast);
             ctx.save();
             ctx.fillStyle=C.muted; ctx.strokeStyle=C.surface; ctx.lineWidth=2; ctx.setLineDash([]);
             ctx.beginPath(); ctx.arc(cx,cy,3.5,0,Math.PI*2); ctx.fill(); ctx.stroke();
-            ctx.font='10px -apple-system,system-ui,sans-serif';
-            ctx.fillStyle=C.muted; ctx.textAlign='left'; ctx.textBaseline='top';
-            ctx.fillText('기준금리 '+rLast.toFixed(2)+'%', cx+8, cy+7);
             ctx.restore();
           }
 
@@ -3428,13 +3416,6 @@ function loadRepo(){
             ctx.beginPath();
             ctx.moveTo(cx,cy-ds); ctx.lineTo(cx+ds,cy); ctx.lineTo(cx,cy+ds); ctx.lineTo(cx-ds,cy);
             ctx.closePath(); ctx.fill(); ctx.stroke();
-            ctx.restore();
-          });
-          declutter(fcLabels, 13).forEach(l=>{
-            ctx.save();
-            ctx.font='bold 10px -apple-system,system-ui,sans-serif';
-            ctx.fillStyle=l.color; ctx.textAlign='left'; ctx.textBaseline='middle';
-            ctx.fillText('예측 '+l.text, toX(fcI)+8, l.y);
             ctx.restore();
           });
         }
